@@ -5,8 +5,12 @@ for _, humorMode in ipairs(addon.humorModes) do
     validHumorModes[string.lower(humorMode)] = humorMode
 end
 function addon.InitializePersistence()
-    if type(LootHoarderForeverDB) ~= "table" then
+    if LootHoarderForeverDB == nil then
         LootHoarderForeverDB = { schemaVersion = addon.schemaVersion, characters = {} }
+    elseif type(LootHoarderForeverDB) ~= "table" then
+        addon.RecordDiagnostic("invalid_database_type")
+        addon.persistenceAvailable = false
+        return false
     end
     local database = LootHoarderForeverDB
     if database.schemaVersion ~= addon.schemaVersion or type(database.characters) ~= "table" then
