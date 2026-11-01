@@ -1,0 +1,1 @@
+0.2.6: Three-line minimal HUD. XP current/required and percentage; loyalty; unused training points. No pet name or XP bar. Default 165x49. Migrates old HUD dimensions, preserves position and saved data.

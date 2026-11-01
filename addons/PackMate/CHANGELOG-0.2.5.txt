@@ -1,0 +1,1 @@
+PackMate v0.2.5: compact HUD (214x55), XP bar and inline loyalty/training points. Old oversized HUD saved dimensions migrate once; position and pet data preserved. Pet XP chat messages remain unchanged. /pm reset restores compact layout.

@@ -1,0 +1,1 @@
+v0.2.3: Print observed pet experience earned to chat when pet XP increases. Default enabled; /pm xp on|off. Existing saved data preserved.

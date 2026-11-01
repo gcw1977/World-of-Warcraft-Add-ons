@@ -1,0 +1,7 @@
+## Interface: 11509
+## Title: KitMan
+## Notes: Beestwood Industries equipment set manager for Classic Era
+## Author: Beestwood Industries
+## Version: 0.1.0
+## SavedVariablesPerCharacter: KitManDB
+KitMan.lua

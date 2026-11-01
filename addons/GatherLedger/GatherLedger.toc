@@ -1,0 +1,11 @@
+## Interface: 11509
+## Title: GatherLedger
+## Notes: Private skinning statistics and shopping-list inventory snapshots
+## Author: Beestwood Industries
+## Version: 1.0.0
+## SavedVariables: GatherLedgerDB
+GatherLedger.lua
+CraftingItems.lua
+Shopping.lua
+RecipeImport.lua
+ShoppingHUD.lua

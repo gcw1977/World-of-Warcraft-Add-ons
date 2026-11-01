@@ -1,0 +1,1 @@
+GatherLedger v0.4.9: Added visible Material and Quantity labels above shopping-list inputs. The + button still adds to the current target; Set replaces the target. No saved-data changes. Based on known-good v0.4.8.

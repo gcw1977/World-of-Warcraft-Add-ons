@@ -1,0 +1,8 @@
+## Interface: 11509
+## Title: LootHoarder
+## Author: Beestwood Industries
+## Notes: Classic Era passive loot offers and opt-in low-value gray looting filter
+## Version: 0.2.3
+## SavedVariables: LootHoarderDatabase
+LootHoarder.lua
+LootHoarderUI.lua

@@ -1,0 +1,8 @@
+## Interface: 11509
+## Title: BodyCount
+## Author: Beestwood Industries
+## Notes: Classic Era kill, damage and overkill counters with milestone messages
+## Version: 0.3.0
+## SavedVariables: BodyCountDatabase
+BodyCount.lua
+BodyCountUI.lua

@@ -1,0 +1,8 @@
+## Interface: 11508
+## Title: Completionist
+## Notes: Quest accounting without routes or hand-holding. Beestwood Industries.
+## Author: Beestwood Industries
+## Version: 0.1.0
+## Dependencies: QuestieDB
+## SavedVariables: CompletionistDB
+Core.lua

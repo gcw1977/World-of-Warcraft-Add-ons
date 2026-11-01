@@ -1,0 +1,7 @@
+PackMate v0.2.7 — Happiness & personality modes
+- HUD text changes green/yellow/red for Happy/Content/Unhappy.
+- /pm sassy: escalating pet chat reminders, including forgiveness on Happy.
+- /pm stoic: single state-change announcements.
+- /pm mute: no automatic chat notifications, including XP and level-up messages.
+- Notification choice saved across sessions. Mode changes clear scheduled reminders.
+- Preserved three-line movable/resizable HUD, XP tracking, and existing settings.

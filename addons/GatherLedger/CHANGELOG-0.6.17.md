@@ -1,0 +1,1 @@
+GatherLedger v0.6.17: Add Reagents opens compact Shopping List HUD rather than main GatherLedger shopping window. Existing visible HUD remains visible; HUD visibility preference is saved. Remove is unchanged.

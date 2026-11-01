@@ -1,0 +1,1 @@
+v0.5.0: Visible Material and Quantity labels retained. Normal gathering and shopping code use observedQuantity and requiredQuantity respectively. Legacy quantity is only read in migrations and removed after transfer. No changes to Statistics/Shopping boundaries.

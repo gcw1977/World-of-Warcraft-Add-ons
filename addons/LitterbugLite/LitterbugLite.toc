@@ -1,0 +1,7 @@
+## Interface: 11507
+## Title: Litterbug Lite
+## Notes: Two-click disposal of gray trash stacks worth less than one silver.
+## Author: Beestwood Industries
+## Version: 0.1.1
+## SavedVariables: LitterbugLiteDB
+LitterbugLite.lua

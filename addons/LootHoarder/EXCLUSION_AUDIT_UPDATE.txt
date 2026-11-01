@@ -1,0 +1,10 @@
+LootHoarder v0.2.3 — Exclusion audit
+
+- /lh exclusions opens a scrollable audit of excluded gathering windows.
+- Includes observed time, source (if identifiable), spell/reason, location, item offers, and whether a money slot appeared.
+- Retains only the latest 60 exclusion records; older detailed records are evicted.
+- Old exclusion counters remain but cannot be reconstructed retroactively.
+- The four-second heuristic alone no longer excludes windows when the evidence is too weak.
+- A recent Skinning cast with a corpse or recent gathering with no identifiable corpse remains classified as an inferred exclusion and is flagged as such.
+- No stored loot totals are reset; no loot is automatically discarded.
+- Live in-game verification is needed, particularly for skinning, fishing, and shared loot sources.

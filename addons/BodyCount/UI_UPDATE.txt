@@ -1,0 +1,1 @@
+BodyCount v0.2.0: /bc opens a dedicated scrollable ledger window. Existing tracking and SavedVariables preserved. /status remains chat output.

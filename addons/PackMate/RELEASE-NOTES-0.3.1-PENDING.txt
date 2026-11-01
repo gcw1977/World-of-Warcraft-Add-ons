@@ -1,0 +1,8 @@
+PackMate v0.3.1 PENDING — not tested in WoW.
+Source: archived v0.2.5 Compact HUD baseline; selectively reapply 0.2.6 and 0.2.7 UI and happiness code.
+0.2.6 intent: three rows (XP, loyalty, free TP), compact 165x49 movable/resizable HUD; existing positions and pet XP history retained.
+0.2.7 intent: red/yellow/green text; /pm sassy, /pm stoic, /pm mute; reminders and recovery lines.
+Root cause of 0.2.7 startup failure: unguarded PET_HAPPINESS_UPDATE event, rejected by the target Classic client; it prevented slash registration.
+Fix: no PET_HAPPINESS_UPDATE registration; existing periodic polling handles updates. Optional pet events have guarded registration.
+Saved HUD layout migration marker updated to 4 so previous large v0.3.0 sizes reset to compact dimensions while retaining position.
+Do not place into the root release directory until game testing confirms startup, HUD sizing, mood commands and XP tracking.

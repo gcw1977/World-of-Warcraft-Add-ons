@@ -1,0 +1,3 @@
+PackMate v0.2.4
+- Pet XP notifications now show: [PM] MONGO received 85 XP, current: 1250/3600
+- Retains the existing XP-delta tracking, HUD, settings, and SavedVariables.

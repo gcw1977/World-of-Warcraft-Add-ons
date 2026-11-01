@@ -1,0 +1,6 @@
+## Interface: 11509
+## Title: PackMate
+## Notes: Classic Era pet XP mini HUD, loyalty, training points, and level-up notices
+## Version: 0.3.1
+## SavedVariables: PackMateDatabase
+PackMate.lua

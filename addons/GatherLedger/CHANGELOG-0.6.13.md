@@ -1,0 +1,1 @@
+v0.6.13: Default importer alignment widens by 4 UI units and shifts 2 units left. /glpanel <horizontal> <width> allows live adjustments, persisted separately in GatherLedgerDB.recipePanelAlignment. No other changes.

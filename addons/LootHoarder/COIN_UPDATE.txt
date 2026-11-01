@@ -1,0 +1,2 @@
+v0.2.1: Records positive copper wallet changes while a money-bearing ordinary loot window is active or in a 3-second close grace period; shows total coins and per-source totals when source known. Existing SavedVariables preserved. No retroactive coin values.
+v0.2.2: Per-creature coin totals now display gold, silver, and copper as well.
