@@ -1,4 +1,4 @@
-# LootHoarder Forever — 0.1.0-dev.1
+# LootHoarder Forever — 0.1.0-dev.2
 
 Independent Forever-only development candidate. Source custody is in the dedicated construction branch, not the stable branch. No gameplay validation or release approval has occurred.
 
