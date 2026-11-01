@@ -1,0 +1,12 @@
+## Interface: 16001
+## Title: PackMate Forever
+## Notes: Experimental Hunter pet XP and happiness micro-HUD; Forever client untested
+## Version: 0.1.0-dev.1
+## SavedVariables: PackMateForeverDatabase
+Core.lua
+Storage.lua
+Api.lua
+Ledger.lua
+Happiness.lua
+Hud.lua
+Main.lua

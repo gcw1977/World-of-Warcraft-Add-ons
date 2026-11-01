@@ -1,13 +1,31 @@
-# PackMate — Forever edition
+# PackMate Forever — 0.1.0-dev.1
 
-Status: **Development source pending reconstruction; no published candidate in this directory.**
+**Development candidate only. NOT_TESTED in World of Warcraft: Forever.**
+Independent implementation; Classic remains under addons/PackMate_C.
+The historical, unrecoverable 0.4.0-dev03.1 prototype is not this build.
 
-## Version policy
+## Installation and interface
 
-This Forever addon is an independent codebase, separate from `addons/PackMate_C/`. Its first packaged development candidate is **`0.1.0-dev.1`**. Each distinct packaged candidate increments the prerelease build sequence (`0.1.0-dev.2`, etc.). Field-test and release candidates use `-beta.N` and `-rc.N`; **`1.0.0` is reserved for the first owner-approved stable release**. `0.1.0` without suffix is not automatically a stable release. Git history records lineage; stable tags will be addon-specific. Classic version numbers remain unchanged.
+Repository source lives at addons/PackMate_F; the ZIP's actual WoW addon directory is PackMate so the game can load PackMate.toc. The provisional TOC interface number is **16001** from earlier beta documentation, NOT confirmed for launch. Verify the live client interface before testing. Do not replace an installed known-good addon or existing SavedVariables without a backup.
 
-## Historical construction record
+## HUD
 
-An earlier agent described an **unpublished, unretained** prototype as `0.4.0-dev03.1`, but its ZIP and source patch were not successfully placed in permanent storage. The original reports and hash remain historical evidence and must **not** be relabeled, nor should their tests be attributed to reconstructed code. This historical label is not part of Forever's adopted version sequence.
+Two compact graphical rows: upper XP progress when a valid current/required XP pair is available; lower loyalty bar deliberately neutral/nonquantitative because a numerical loyalty scale is not verified. The frame border follows happiness green/yellow/red or neutral unknown. Hover for pet identity, numeric XP, loyalty description, training points if supported, observed XP total, and unavailable explanations. Drag to move; lower-right grip to resize. Free-floating by default; no protected pet-frame anchoring.
 
-The next independently reconstructed and verified PackMate Forever candidate must carry `0.1.0-dev.1` consistently in its `.toc`, package name, source/version metadata, and handoff documents. No claim is made here that that candidate already exists.
+## Commands
+
+/pm, /packmate, /petledger (aliases registered only when not already claimed).
+
+/pm help, /pm status, /pm diag, /pm show, /pm hide, /pm reset, /pm sassy, /pm stoic, /pm mute, /pm xp on, /pm xp off.
+
+Reset changes only geometry and visibility, never statistics. Mute blocks automatic notices but not explicit command replies. Sassy content reminders are scheduled at +30/+60 seconds and unhappy reminders at +60/+180 seconds, with stale stages discarded. The initial happiness observation is silent.
+
+## Data and safety
+
+Uses only PackMateForeverDatabase, partitioned by player GUID and pet GUID; no automatic Classic import. XP is an **observed increase**, never proven per-kill credit. First observation and level gaps do not fabricate XP. Invalid database input is preserved untouched, with session-only fallback. Pet GUID or character identity unavailable means no persistent ledger mutation. All Forever runtime behavior, APIs, events, protected UI interactions and saved-variable persistence require owner-led field tests.
+
+No BI Core dependency; optional OpenPackMateStatusHud() opens the micro-HUD.
+
+## Version lineage
+
+New Forever line begins at 0.1.0-dev.1. Every distinct packaged candidate receives a new prerelease number. No stable release or tag has been approved.
