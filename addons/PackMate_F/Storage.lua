@@ -122,7 +122,6 @@ end
 
 function packMate.Storage.AddObservedExperience(petGuid, petName, petLevel, observedGain)
     if not activeCharacterKey then return false, "CHARACTER_ID_UNAVAILABLE" end
-    if not persistenceAvailable then return false, "SESSION_ONLY" end
     if not packMate.Safe.Text(petGuid) or not packMate.Safe.Text(petName) then return false, "IDENTITY_INVALID" end
     if not packMate.Safe.Integer(petLevel, 1, 999) or not packMate.Safe.Integer(observedGain, 1, 100000000) then return false, "GAIN_INVALID" end
     local characters = sessionDatabase.characters
@@ -136,6 +135,7 @@ function packMate.Storage.AddObservedExperience(petGuid, petName, petLevel, obse
         recordSchemaVersion = 1, petProperName = petName, lastObservedPetLevel = petLevel,
         totalObservedExperiencePoints = nextTotal
     }
+    if not persistenceAvailable then return false, "SESSION_ONLY_NOT_PERSISTED" end
     return true, "COMMITTED"
 end
 
