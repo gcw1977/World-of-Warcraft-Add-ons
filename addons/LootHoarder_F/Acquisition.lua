@@ -26,7 +26,7 @@ local function IsConfirmedDeadUnitSource(sourceGUID)
     end
     return false
 end
-local function ReadSourceEligibility(lootSlotIndex)
+local function ReadSourceEligibility(lootSlotIndex, offeredQuantity)
     if type(GetLootSourceInfo) ~= "function" then
         addon.RecordDiagnostic("loot_source_api_unavailable")
         return false
@@ -38,7 +38,7 @@ local function ReadSourceEligibility(lootSlotIndex)
         return false
     end
     -- Multi-source slots, unknown GUIDs and world containers are NOT guessed.
-    if secondSourceGUID ~= nil or type(sourceQuantity) ~= "number" then
+    if secondSourceGUID ~= nil or type(sourceQuantity) ~= "number" or sourceQuantity ~= offeredQuantity then
         addon.RecordDiagnostic("ambiguous_source")
         return false
     end
@@ -104,7 +104,7 @@ local function ReadLootWindow()
                         itemIdentifier = itemIdentifier,
                         itemLink = itemLink,
                         offeredQuantity = offeredQuantity,
-                        eligibleSource = not window.excluded and ReadSourceEligibility(lootSlotIndex),
+                        eligibleSource = not window.excluded and ReadSourceEligibility(lootSlotIndex, offeredQuantity),
                         startingBagCount = ReadItemCount(itemIdentifier)
                     }
                 else
@@ -128,8 +128,8 @@ local function ParseSelfLootReceipt(chatMessage)
         if type(templateRecord.formatText) == "string" then
             local luaPattern = templateRecord.formatText
                 :gsub("([%^%$%(%)%.%[%]%*%+%-%?])", "%%%1")
-                :gsub("%%%%s", "(.+)")
-                :gsub("%%%%d", "(%%d+)")
+                :gsub("%%s", "(.+)")
+                :gsub("%%d", "(%%d+)")
             local firstCapture, secondCapture = string.match(chatMessage, "^" .. luaPattern .. "$")
             if firstCapture then
                 local itemIdentifier = tonumber(string.match(firstCapture, "item:(%d+)"))
