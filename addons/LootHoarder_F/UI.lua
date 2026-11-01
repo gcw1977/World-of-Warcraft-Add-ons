@@ -26,7 +26,11 @@ local function BuildStatisticsWindow()
     window:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
     local backgroundTexture = window:CreateTexture(nil, "BACKGROUND")
     backgroundTexture:SetAllPoints(window)
-    backgroundTexture:SetColorTexture(0.035, 0.04, 0.055, 0.95)
+    if type(backgroundTexture.SetColorTexture) == "function" then
+        backgroundTexture:SetColorTexture(0.035, 0.04, 0.055, 0.95)
+    elseif type(backgroundTexture.SetTexture) == "function" then
+        backgroundTexture:SetTexture("Interface\\\\DialogFrame\\\\UI-DialogBox-Background")
+    end
     CreateWindowLabel(window, "LootHoarder Forever — Lifetime", "GameFontNormalLarge", "TOPLEFT", window, "TOPLEFT", 18, -16)
     local closeButton = CreateFrame("Button", nil, window)
     closeButton:SetSize(28, 28)
