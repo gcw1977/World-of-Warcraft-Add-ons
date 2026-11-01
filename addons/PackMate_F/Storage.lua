@@ -52,7 +52,8 @@ function packMate.Storage.Initialize()
         PackMateForeverDatabase = {schemaVersion = 1, settings = copyDefaultSettings(), characters = {}}
         existing = PackMateForeverDatabase
     end
-    if validDatabase(existing) then
+    local schemaCheckSucceeded, schemaValid = pcall(validDatabase, existing)
+    if schemaCheckSucceeded and schemaValid then
         sessionDatabase = existing
         persistenceAvailable = true
         packMate.Diagnostics.persistence = "PERSISTENT"
@@ -64,13 +65,21 @@ function packMate.Storage.Initialize()
         packMate.RecordDiagnostic("STORAGE", "WARN", "PRESERVED_INVALID_DATABASE")
     end
     activeCharacterKey = nil
+    packMate.Storage.ResolveCharacterIdentity()
+end
+
+function packMate.Storage.ResolveCharacterIdentity()
+    if activeCharacterKey then return true end
     local success, characterGuid = packMate.Safe.Call(UnitGUID, "player")
     if success then activeCharacterKey = packMate.Safe.Text(characterGuid) end
     if not activeCharacterKey then
         persistenceAvailable = false
         packMate.Diagnostics.persistence = "SESSION_ONLY_CHARACTER_ID_UNAVAILABLE"
-        packMate.RecordDiagnostic("STORAGE", "WARN", "CHARACTER_ID_UNAVAILABLE")
+        return false
     end
+    persistenceAvailable = sessionDatabase == PackMateForeverDatabase
+    packMate.Diagnostics.persistence = persistenceAvailable and "PERSISTENT" or "SESSION_ONLY_INVALID_SCHEMA"
+    return true
 end
 
 function packMate.Storage.Settings()

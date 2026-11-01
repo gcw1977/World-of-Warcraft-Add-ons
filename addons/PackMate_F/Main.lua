@@ -16,6 +16,7 @@ local function observeComponent(componentName, functionReference)
 end
 
 local function refreshPet()
+    packMate.Storage.ResolveCharacterIdentity()
     local identity = observeComponent("IDENTITY", packMate.Api.ReadIdentity)
     local now = packMate.Now()
     local experience, loyalty, points, happiness

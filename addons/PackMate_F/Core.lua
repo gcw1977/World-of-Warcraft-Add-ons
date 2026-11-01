@@ -41,7 +41,7 @@ function packMate.Safe.Call(functionReference, ...)
     if type(functionReference) ~= "function" then return false, "API_ABSENT" end
     local results = {pcall(functionReference, ...)}
     if not results[1] then return false, "API_ERROR" end
-    return true, results[2], results[3], results[4]
+    return true, results[2], results[3], results[4], results[5]
 end
 
 function packMate.RecordDiagnostic(componentName, severity, reasonCode)
