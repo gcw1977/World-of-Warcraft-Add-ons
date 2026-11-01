@@ -1,4 +1,4 @@
--- LootHoarder Forever 0.1.0-dev.1: shared constants and guarded diagnostics.
+-- LootHoarder Forever 0.1.0-dev.2: shared constants and guarded diagnostics.
 LootHoarderForever = LootHoarderForever or {}
 local addon = LootHoarderForever
 addon.version = "0.1.0-dev.1"
