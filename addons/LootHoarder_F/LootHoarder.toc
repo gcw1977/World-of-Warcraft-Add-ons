@@ -2,7 +2,7 @@
 ## Title: LootHoarder Forever
 ## Notes: Conservative lifetime item totals from confirmed ordinary loot only; Forever candidate
 ## Author: Beestwood Industries
-## Version: 0.1.0-dev.2
+## Version: 0.1.0-dev.3
 ## SavedVariables: LootHoarderForeverDB
 Core.lua
 Persistence.lua
