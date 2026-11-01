@@ -1,7 +1,7 @@
--- LootHoarder Forever 0.1.0-dev.2: shared constants and guarded diagnostics.
+-- LootHoarder Forever 0.1.0-dev.3: shared constants and guarded diagnostics.
 LootHoarderForever = LootHoarderForever or {}
 local addon = LootHoarderForever
-addon.version = "0.1.0-dev.1"
+addon.version = "0.1.0-dev.3"
 addon.schemaVersion = 1
 addon.categoryNames = {
     "Food", "Beverages", "Alcoholic beverages", "Potions", "Elixirs/flasks",
