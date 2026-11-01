@@ -1,0 +1,13 @@
+## Interface: 16001
+## Title: LootHoarder Forever
+## Notes: Conservative lifetime item totals from confirmed ordinary loot only; Forever candidate
+## Author: Beestwood Industries
+## Version: 0.1.0-dev.1
+## SavedVariables: LootHoarderForeverDB
+Core.lua
+Persistence.lua
+Categories.lua
+Milestones.lua
+UI.lua
+Acquisition.lua
+Main.lua
