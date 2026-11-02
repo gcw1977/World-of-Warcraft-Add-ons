@@ -55,6 +55,8 @@ local function HandleSlashCommand(arguments)
     elseif command == "" or command == "overview" then
         local success = pcall(addon.OpenWindow, "OVERVIEW")
         if not success then addon.NoteError("UI_LAUNCH_FAILED"); Chat("UI unavailable; observer remains active") end
+    elseif command == "baseline" then
+        Chat("Opening balance can only be confirmed in the Overview with an empty ledger")
     elseif command == "help" then
         Chat("/gob [overview|ledger|diag|help] (also /goblinomicon)")
     else
@@ -91,8 +93,8 @@ local function Initialize()
     else
         addon.NoteError("RELOAD_HOOK_UNAVAILABLE")
     end
-    -- ADDON_LOADED can occur after world entry when enabled dynamically.
-    addon.BeginWalletObservation()
+    -- A valid pre-world zero is not evidence of an empty wallet.
+    -- Wait for PLAYER_ENTERING_WORLD to establish the first baseline.
 end
 
 lifecycleFrame:SetScript("OnEvent", function(self, eventName, ...)
@@ -103,8 +105,19 @@ lifecycleFrame:SetScript("OnEvent", function(self, eventName, ...)
         return
     elseif eventName == "PLAYER_ENTERING_WORLD" then
         addon.BeginWalletObservation()
+        -- Defer a second observation until world money has populated.
+        if type(C_Timer) == "table" and type(C_Timer.After) == "function" then
+            C_Timer.After(1.0, function()
+                if addon.characterData then addon.ReconcileWorldWallet() end
+                if addon.RefreshVisibleUI then addon.RefreshVisibleUI() end
+            end)
+        end
     elseif eventName == "PLAYER_MONEY" then
-        if not addon.characterData then addon.BeginWalletObservation()
+        if not addon.characterData then
+            -- Avoid creating an initial zero baseline before world entry.
+            if type(IsLoggedIn) == "function" and IsLoggedIn() then
+                addon.BeginWalletObservation()
+            end
         else addon.ObserveMoneyEvent() end
     elseif eventName == "QUEST_TURNED_IN" then
         local questIdentifier, experienceReward, moneyReward = ...
