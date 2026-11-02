@@ -3,7 +3,7 @@
 local addonName, addon = ...
 local state = {
     page = "OVERVIEW", period = "LIFETIME", characterKey = nil,
-    rowCount = 7, pageNumber = 1, overviewPageNumber = 1,
+    rowCount = 5, pageNumber = 1, overviewPageNumber = 1,
     expandedMonths = {}, expandedDays = {}, selectedMonth = nil,
     selectedDay = nil, initialExpansionSet = false, expandAll = false,
     expandScope = "ALL"
@@ -430,9 +430,9 @@ function addon.OpenWindow(requestedPage)
             row.balance:SetJustifyH("RIGHT")
             state.rows[#state.rows + 1] = row
         end
-        state.detail = Text(frame, "GameFontHighlightSmall", 662, 22, 17, -338)
-        state.coverage = Text(frame, "GameFontNormalSmall", 355, 20, 16, -354)
-        state.footer = Text(frame, "GameFontNormalSmall", 230, 20, 382, -354)
+        state.detail = Text(frame, "GameFontHighlightSmall", 662, 18, 17, -337)
+        state.coverage = Text(frame, "GameFontNormalSmall", 355, 17, 16, -357)
+        state.footer = Text(frame, "GameFontNormalSmall", 230, 17, 382, -357)
         Button(frame, "<", 619, -350, 28, function()
             if state.page == "LEDGER" then
                 state.pageNumber = math.max(1, state.pageNumber - 1)
