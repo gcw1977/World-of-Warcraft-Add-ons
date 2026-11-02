@@ -109,7 +109,7 @@ local function ScheduleFlush()
     if observer.flushScheduled then return end
     observer.flushScheduled = true
     if type(C_Timer) == "table" and type(C_Timer.After) == "function" then
-        local success = pcall(C_Timer.After, 0.45, function()
+        local success = pcall(C_Timer.After, 1.0, function()
             addon.FlushObservedMoney()
         end)
         if success then return end
