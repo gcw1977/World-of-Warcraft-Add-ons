@@ -8,7 +8,7 @@ local function RuntimeSeconds()
         local success, value = pcall(GetTime)
         if success and type(value) == "number" and value == value then return value end
     end
-    return 0
+    return nil
 end
 
 -- Only a valid GetMoney return is a financial observation; events have no delta.
@@ -29,9 +29,11 @@ end
 function addon.RecordQuestEvidence(moneyReward)
     if type(moneyReward) ~= "number" or not addon.IsCopper(moneyReward)
         or moneyReward == 0 then return end
+    local observedAt = RuntimeSeconds()
+    if observedAt == nil then return end
     local observer = addon.observer
     local evidence = {kind = "QUEST_REWARD", amountCopper = moneyReward,
-        observedAt = RuntimeSeconds(), number = observer.nextEvidenceNumber}
+        observedAt = observedAt, number = observer.nextEvidenceNumber}
     observer.nextEvidenceNumber = observer.nextEvidenceNumber + 1
     table.insert(observer.evidence, evidence)
     while #observer.evidence > 128 do table.remove(observer.evidence, 1) end
@@ -43,6 +45,10 @@ local function ResolveAttribution(candidate)
     local matchingEvidence = nil
     local matchCount = 0
     local now = RuntimeSeconds()
+    if now == nil or candidate.observedAt == nil then
+        return candidate.afterCopper > candidate.beforeCopper and
+            "Unclassified Income" or "Unclassified Expense", "UNKNOWN"
+    end
     for _, evidence in ipairs(addon.observer.evidence) do
         if evidence.kind == "QUEST_REWARD"
             and candidate.afterCopper - candidate.beforeCopper == evidence.amountCopper
@@ -87,7 +93,7 @@ function addon.FlushObservedMoney()
     -- Evidence TTL bounds only transient context, not historical records.
     local now = RuntimeSeconds()
     for evidenceIndex = #observer.evidence, 1, -1 do
-        if now - observer.evidence[evidenceIndex].observedAt > 10 then
+        if now == nil or now - observer.evidence[evidenceIndex].observedAt > 10 then
             table.remove(observer.evidence, evidenceIndex)
         end
     end
