@@ -2,7 +2,7 @@
 -- SavedVariables are only serialized by the WoW client on reload/logout; they are
 -- not an independently durable database. Never invent transactions for downtime.
 local addonName, addon = ...
-addon.version = "0.0.1-dev.2"
+addon.version = "0.0.1-dev.4"
 addon.schemaVersion = 1
 addon.safeMode = false
 addon.lastErrorCode = nil
@@ -158,6 +158,42 @@ function addon.SelectCharacter(playerGuid, characterName, realmName, openingCopp
         addon.sessionContinued = false
     end
     return true
+end
+
+-- Rebase an EMPTY initial journal on explicit user confirmation only.
+-- Never manufacture a credit, delete historical rows, or rewrite a nonempty journal.
+function addon.ConfirmOpeningBalance()
+    if addon.safeMode or not addon.characterData or not addon.accountData then
+        return false, "Journal not available"
+    end
+    local characterData = addon.characterData
+    local epochs = characterData.epochs
+    local original = epochs and epochs[1]
+    if not original or #epochs ~= 1 or #characterData.transactions ~= 0
+        or original.reason ~= "INITIAL_BASELINE"
+        or characterData.lastCommittedBalanceCopper ~= original.lastBalanceCopper
+        or original.openingBalanceCopper ~= original.lastBalanceCopper
+        or #addon.observer.pending > 0 then
+        return false, "Only an empty, unchanged initial journal can be corrected"
+    end
+    local valid, errorCode = addon.VerifyCharacter(characterData)
+    if not valid then return false, errorCode end
+    local currentlyObserved = addon.ReadWallet()
+    if currentlyObserved == nil then return false, "Wallet unavailable" end
+    if currentlyObserved == original.openingBalanceCopper then
+        return false, "Opening balance already matches wallet"
+    end
+    local timestamp = addon.CurrentTimestamp()
+    original.originalUnconfirmedOpeningCopper = original.openingBalanceCopper
+    original.correctedAt = timestamp
+    original.reason = "OWNER_CONFIRMED_INITIAL_BASELINE"
+    original.openingBalanceCopper = currentlyObserved
+    original.lastBalanceCopper = currentlyObserved
+    characterData.lastCommittedBalanceCopper = currentlyObserved
+    addon.observer.lastObservedCopper = currentlyObserved
+    addon.indexCache[addon.characterKey] = nil
+    addon.summaryCache[addon.characterKey] = nil
+    return true, "Opening balance set to the current wallet; no income recorded"
 end
 
 -- Called at logout. ReloadUI is hooked separately; a missing hook means a
