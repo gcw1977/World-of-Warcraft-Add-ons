@@ -8,6 +8,15 @@ local dashboard = {page = "OVERVIEW", period = "LIFETIME", characterKey = nil,
 local parchment = {0.72, 0.62, 0.40, 0.98}
 local brass = {0.75, 0.56, 0.21, 1}
 
+-- Classic template compatibility: do not require the newer SetColorTexture API.
+local function ColorTexture(texture, red, green, blue, alpha)
+    if type(texture.SetColorTexture) == "function" then
+        texture:SetColorTexture(red, green, blue, alpha)
+    elseif type(texture.SetTexture) == "function" then
+        texture:SetTexture(red, green, blue, alpha)
+    end
+end
+
 local function MakeText(parent, fontObject, width, height, anchor, relative, x, y)
     local label = parent:CreateFontString(nil, "OVERLAY", fontObject or "GameFontNormal")
     label:SetSize(width, height)
@@ -23,7 +32,7 @@ local function MakeButton(parent, caption, width, height, x, y, callback)
     button:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
     local texture = button:CreateTexture(nil, "BACKGROUND")
     texture:SetAllPoints(button)
-    texture:SetColorTexture(0.25, 0.19, 0.09, 0.95)
+    ColorTexture(texture, 0.25, 0.19, 0.09, 0.95)
     local label = button:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     label:SetAllPoints(button)
     label:SetText(caption)
@@ -300,7 +309,9 @@ function addon.OpenWindow(requestedPage)
         end
         local frame = CreateFrame("Frame", "GoblinomiconClassicDashboard", UIParent)
         frame:SetSize(760, 580)
-        frame:SetClampedToScreen(true)
+        if type(frame.SetClampedToScreen) == "function" then
+            frame:SetClampedToScreen(true)
+        end
         frame:SetMovable(true)
         frame:EnableMouse(true)
         frame:RegisterForDrag("LeftButton")
@@ -318,12 +329,12 @@ function addon.OpenWindow(requestedPage)
         end)
         local background = frame:CreateTexture(nil, "BACKGROUND")
         background:SetAllPoints(frame)
-        background:SetColorTexture(unpack(parchment))
+        ColorTexture(background, unpack(parchment))
         local border = frame:CreateTexture(nil, "BORDER")
         border:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
         border:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, 0)
         border:SetHeight(5)
-        border:SetColorTexture(unpack(brass))
+        ColorTexture(border, unpack(brass))
         local geometry = addon.accountData and addon.accountData.displaySettings
             and addon.accountData.displaySettings.windowGeometry
         if type(geometry) == "table" and type(geometry.x) == "number"
