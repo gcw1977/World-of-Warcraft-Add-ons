@@ -121,7 +121,7 @@ function registry.DiscoverMetadata()
     if not successful or type(count) ~= "number" or count < 0 then return end
     for addonIndex = 1, math.min(count, 512) do
         local name = getAddonInfo(addonIndex)
-        if isSafeIdentifier(name) and not descriptorsByIdentifier[name].registered then
+        if isSafeIdentifier(name) and not (descriptorsByIdentifier[name] and descriptorsByIdentifier[name].registered) then
             local protocol = getAddonMetadata(name, "X-BICore-Registration")
             local displayName = getAddonMetadata(name, "X-BICore-Name")
             local exportName = getAddonMetadata(name, "X-BICore-Provider")
