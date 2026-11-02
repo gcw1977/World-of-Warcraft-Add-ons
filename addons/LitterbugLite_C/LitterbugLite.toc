@@ -1,7 +1,8 @@
-## Interface: 11507
+## Interface: 11509
 ## Title: Litterbug Lite
-## Notes: Two-click disposal of gray trash stacks worth less than one silver.
+## Notes: Classic bag-space reserve HUD: gray-item virtual slots, no automatic deletion.
 ## Author: Beestwood Industries
-## Version: 0.1.1
+## Version: 0.2.0-dev.1
 ## SavedVariables: LitterbugLiteDB
+
 LitterbugLite.lua
