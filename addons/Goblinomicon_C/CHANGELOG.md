@@ -1,3 +1,11 @@
+## 2026-11-02 — 0.0.1-dev.9 — Classic UI and category drill-down
+- Overview category rows now open a read-only Ledger filter for that category.
+- Filtered Ledger includes all matching entries, paged newest first, with timestamp, amount, and running wallet.
+- Clear Filter returns to all transactions. Time-period toggle retained for filtered view.
+- Native Classic dialog border and standard buttons; hover feedback on transaction rows.
+- Accounting, historical correction fields, and SavedVariables schema unchanged.
+- Requires owner field-testing in Classic. Not a production release.
+
 ## 2026-11-02 — 0.0.1-dev.8 — Flight attribution fix
 - Keep taxi destination selection evidence after taxi-map close (secure post-hook TakeTaxiNode).
 - Observed wallet deduction remains authoritative; listed taxi fares are advisory.
