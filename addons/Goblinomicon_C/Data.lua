@@ -2,7 +2,7 @@
 -- SavedVariables are only serialized by the WoW client on reload/logout; they are
 -- not an independently durable database. Never invent transactions for downtime.
 local addonName, addon = ...
-addon.version = "0.0.1-dev.4"
+addon.version = "0.0.1-dev.5"
 addon.schemaVersion = 1
 addon.safeMode = false
 addon.lastErrorCode = nil
@@ -244,6 +244,77 @@ function addon.AppendTransaction(candidate, category, confidence)
     return true
 end
 
+-- A confirmed historical correction changes accounting presentation only.
+-- The original raw ledger entry stays untouched and passes arithmetic checks.
+function addon.ParseCopperAmount(argument)
+    if type(argument) ~= "string" then return nil end
+    local cleaned = string.lower(string.gsub(argument, "%s+", ""))
+    if not string.match(cleaned, "^%d+g%d+s%d+c$") then return nil end
+    local gold, silver, copper = string.match(cleaned, "^(%d+)g(%d+)s(%d+)c$")
+    gold, silver, copper = tonumber(gold), tonumber(silver), tonumber(copper)
+    if not gold or not silver or not copper or silver > 99 or copper > 99 then
+        return nil
+    end
+    local total = gold * 10000 + silver * 100 + copper
+    return addon.IsCopper(total) and total or nil
+end
+
+function addon.EffectiveTransactionDelta(characterData, transaction)
+    local correction = characterData and characterData.accountingCorrection
+    if correction and transaction.sequence == correction.transactionSequence
+        and transaction.beforeCopper == correction.originalBeforeCopper
+        and transaction.afterCopper == correction.originalAfterCopper
+        and transaction.deltaCopper == correction.originalDeltaCopper
+        and addon.IsCopper(correction.confirmedOpeningCopper) then
+        return transaction.afterCopper - correction.confirmedOpeningCopper
+    end
+    return transaction.deltaCopper
+end
+
+-- Only apply a user-entered historical baseline to the tightly checked
+-- single false-initial-income pattern. No money is guessed from the UI.
+function addon.PreviewStartupCorrection(openingCopper)
+    local characterData = addon.characterData
+    if addon.safeMode or not characterData or not addon.IsCopper(openingCopper)
+        or openingCopper == 0 then return false, "Invalid opening amount" end
+    if characterData.accountingCorrection then
+        return false, "A correction already exists; raw history unchanged"
+    end
+    if #characterData.transactions ~= 1 then
+        return false, "Requires exactly one existing transaction"
+    end
+    local first = characterData.transactions[1]
+    local epoch = characterData.epochs and characterData.epochs[1]
+    if not epoch or epoch.reason ~= "INITIAL_BASELINE"
+        or epoch.openingBalanceCopper ~= 0 or first.sequence ~= 1
+        or first.beforeCopper ~= 0 or first.deltaCopper ~= first.afterCopper
+        or first.category ~= "Unclassified Income"
+        or first.confidence ~= "UNKNOWN"
+        or openingCopper >= first.afterCopper then
+        return false, "Journal does not match the startup anomaly"
+    end
+    local valid, reason = addon.VerifyCharacter(characterData)
+    if not valid then return false, tostring(reason) end
+    return true, addon.FormatCopper(first.afterCopper - openingCopper), first
+end
+function addon.ApplyStartupCorrection(openingCopper)
+    local valid, result, transaction = addon.PreviewStartupCorrection(openingCopper)
+    if not valid then return false, result end
+    local characterData = addon.characterData
+    local timestamp = addon.CurrentTimestamp()
+    characterData.accountingCorrection = {
+        reason = "OWNER_CONFIRMED_STARTUP_WALLET",
+        confirmedAt = timestamp, transactionSequence = transaction.sequence,
+        confirmedOpeningCopper = openingCopper,
+        originalBeforeCopper = transaction.beforeCopper,
+        originalAfterCopper = transaction.afterCopper,
+        originalDeltaCopper = transaction.deltaCopper
+    }
+    addon.indexCache[addon.characterKey] = nil
+    addon.summaryCache[addon.characterKey] = nil
+    return true, "Confirmed opening baseline. Unverified post-baseline delta: " .. result
+end
+
 -- Read-only summary; baseline wealth is deliberately excluded from income.
 function addon.GetTotals(characterData, sessionOnly)
     local activeSessionId = characterData.activeSession and characterData.activeSession.id
@@ -258,7 +329,7 @@ function addon.GetTotals(characterData, sessionOnly)
     local incomeCategories, expenseCategories = {}, {}
     for _, transaction in ipairs(characterData.transactions) do
         if not sessionOnly or transaction.sessionId == activeSessionId then
-            local delta = transaction.deltaCopper
+            local delta = addon.EffectiveTransactionDelta(characterData, transaction)
             local category = transaction.category or
                 (delta > 0 and "Unclassified Income" or "Unclassified Expense")
             categories[category] = (categories[category] or 0) + math.abs(delta)
@@ -309,12 +380,13 @@ function addon.GetLedgerIndex(characterKey)
             table.insert(month.dayOrder, dayKey)
         end
         table.insert(day.transactionIndices, transactionIndex)
-        if transaction.deltaCopper > 0 then
-            month.income = month.income + transaction.deltaCopper
-            day.income = day.income + transaction.deltaCopper
-        else
-            month.expenses = month.expenses - transaction.deltaCopper
-            day.expenses = day.expenses - transaction.deltaCopper
+        local effectiveDelta = addon.EffectiveTransactionDelta(characterData, transaction)
+        if effectiveDelta > 0 then
+            month.income = month.income + effectiveDelta
+            day.income = day.income + effectiveDelta
+        elseif effectiveDelta < 0 then
+            month.expenses = month.expenses - effectiveDelta
+            day.expenses = day.expenses - effectiveDelta
         end
     end
     table.sort(index.monthOrder, function(left, right) return left > right end)
