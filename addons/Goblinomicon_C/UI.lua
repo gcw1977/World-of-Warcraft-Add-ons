@@ -101,15 +101,11 @@ local function RefreshOverview()
         addon.FormatCopper(totals.income), addon.FormatCopper(-totals.expenses),
         addon.FormatCopper(totals.net)))
     local incomeCategories, expenseCategories = {}, {}
-    for category, copper in pairs(totals.categories) do
-        local categoryEntry = {name = category, copper = copper}
-        if string.find(category, "Expense", 1, true) or
-            category == "Vendor Purchase" or category == "Repair" or
-            category == "Travel" or category == "Training" then
-            table.insert(expenseCategories, categoryEntry)
-        else
-            table.insert(incomeCategories, categoryEntry)
-        end
+    for category, copper in pairs(totals.incomeCategories) do
+        table.insert(incomeCategories, {name = category, copper = copper})
+    end
+    for category, copper in pairs(totals.expenseCategories) do
+        table.insert(expenseCategories, {name = category, copper = copper})
     end
     table.sort(incomeCategories, function(a,b) return a.name < b.name end)
     table.sort(expenseCategories, function(a,b) return a.name < b.name end)
