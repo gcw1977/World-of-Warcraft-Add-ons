@@ -1,4 +1,4 @@
-# Classic owner field-test checklist — 0.0.1-dev.1 (NOT_TESTED)
+# Classic owner field-test checklist — 0.0.1-dev.2 (NOT_TESTED)
 
 Before testing, back up any GoblinomiconClassicAccountData SavedVariables and use an isolated test character or copy. Record date/time, actual GetBuildInfo tuple, candidate commit/hash, initial copper, observed events, actual result and screenshots.
 
