@@ -1,15 +1,22 @@
-Litterbug Lite 0.1.0 - WoW Classic Era
+Litterbug Lite Classic v0.2.0-dev.1 — owner field-test candidate
 
-/lbl or /litterbug - toggle HUD
-/lbl show | hide | reset
+Implements November 1 approved HUD architecture:
+- Reserve normal inventory slots: 3–5 configurable; default 3.
+- When free ordinary bag slots meet reserve, HUD auto-hides.
+- With a shortage, shows cheapest eligible gray stacks, right aligned.
+- If ordinary bags are full and no verified candidates exist, red warning.
+- Excludes quivers, ammunition pouches, and other specialized bags.
+- No DeleteCursorItem; drag a displayed slot with left mouse to pick up
+  the underlying actual item, then drop it yourself through the game UI.
+- Sort Trash sorts the displayed ranking by total stack vendor value and
+  refreshes the inventory. It never physically rearranges your bags.
+- Quest metadata must be readable and indicate the item is unprotected;
+  if data is missing, a candidate is excluded rather than guessed.
 
-Empty slots shows free / total slots across backpack and equipped bags.
-First click finds lowest total vendor-value gray stack strictly UNDER 1 silver.
-Second click revalidates that exact stack and requests deletion.
-Never selects white or higher-quality items, or unknown-price items.
-No background deletion, no other addon dependencies.
+Commands:
+/lbl and /litterbug — toggle manual HUD inspection
+/lbl show | hide | reset | diag
 
-The game client may prohibit item deletion or display its own confirmation depending
-on API restrictions. Test with inexpensive gray items first.
-
-Move: drag HUD; resize: bottom-right grip. Settings persist via SavedVariables.
+Preserves existing LitterbugLiteDB window position; adds reserveSlots.
+Actual Classic UI drag/quest API availability must be field tested.
+Backup the previous addon and SavedVariables before installing.
