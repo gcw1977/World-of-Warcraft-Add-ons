@@ -9,6 +9,7 @@ addon.lastErrorCode = nil
 addon.characterKey = nil
 addon.characterData = nil
 addon.indexCache = {}
+addon.summaryCache = {}
 addon.sessionContinued = false
 
 local function IsCopper(value)
@@ -61,38 +62,35 @@ function addon.VerifyCharacter(characterData)
         or not IsCopper(characterData.nextSequenceNumber) then
         return false, "CHARACTER_SCHEMA_INVALID"
     end
-    local previousSequence = 0
-    local previousEpoch = 0
-    local previousBalance = nil
-    local epochById = {}
+    local expectedBalances = {}
     for epochIndex, epoch in ipairs(characterData.epochs) do
         if type(epoch) ~= "table" or epoch.id ~= epochIndex
             or not IsCopper(epoch.openingBalanceCopper)
             or not IsCopper(epoch.lastBalanceCopper) then
             return false, "EPOCH_INVALID"
         end
-        epochById[epoch.id] = epoch
+        expectedBalances[epochIndex] = epoch.openingBalanceCopper
     end
+    local previousSequence, previousEpochId = 0, 0
     for _, transaction in ipairs(characterData.transactions) do
         if type(transaction) ~= "table" or transaction.sequence ~= previousSequence + 1
             or not IsCopper(transaction.beforeCopper) or not IsCopper(transaction.afterCopper)
-            or type(transaction.deltaCopper) ~= "number"
-            or transaction.deltaCopper == 0
+            or type(transaction.deltaCopper) ~= "number" or transaction.deltaCopper == 0
             or transaction.afterCopper - transaction.beforeCopper ~= transaction.deltaCopper
-            or not epochById[transaction.epochId] then
+            or type(transaction.epochId) ~= "number"
+            or transaction.epochId < previousEpochId
+            or not expectedBalances[transaction.epochId]
+            or transaction.beforeCopper ~= expectedBalances[transaction.epochId] then
             return false, "TRANSACTION_INTEGRITY_INVALID"
         end
-        if transaction.epochId ~= previousEpoch then
-            if transaction.epochId ~= previousEpoch + 1
-                or transaction.beforeCopper ~= epochById[transaction.epochId].openingBalanceCopper then
-                return false, "EPOCH_TRANSITION_INVALID"
-            end
-            previousEpoch = transaction.epochId
-        elseif transaction.beforeCopper ~= previousBalance then
-            return false, "LEDGER_BALANCE_CHAIN_INVALID"
-        end
+        expectedBalances[transaction.epochId] = transaction.afterCopper
         previousSequence = transaction.sequence
-        previousBalance = transaction.afterCopper
+        previousEpochId = transaction.epochId
+    end
+    for epochIndex, epoch in ipairs(characterData.epochs) do
+        if expectedBalances[epochIndex] ~= epoch.lastBalanceCopper then
+            return false, "EPOCH_BALANCE_INVALID"
+        end
     end
     if characterData.nextSequenceNumber ~= previousSequence + 1 then
         return false, "SEQUENCE_COUNTER_INVALID"
@@ -142,6 +140,7 @@ function addon.SelectCharacter(playerGuid, characterName, realmName, openingCopp
     end
     addon.characterKey = playerGuid
     addon.characterData = characterData
+    addon.summaryCache[playerGuid] = nil
     local session = characterData.activeSession
     if type(session) == "table" and session.reloadPending == true
         and type(session.id) == "string" then
@@ -203,16 +202,21 @@ function addon.AppendTransaction(candidate, category, confidence)
     characterData.lastCommittedBalanceCopper = record.afterCopper
     epoch.lastBalanceCopper = record.afterCopper
     addon.indexCache[addon.characterKey] = nil
+    addon.summaryCache[addon.characterKey] = nil
     return true
 end
 
 -- Read-only summary; baseline wealth is deliberately excluded from income.
 function addon.GetTotals(characterData, sessionOnly)
-    local income, expenses, categories = 0, 0, {}
     local activeSessionId = characterData.activeSession and characterData.activeSession.id
     if sessionOnly and (characterData ~= addon.characterData or not activeSessionId) then
         return nil
     end
+    local characterKey = characterData.guid
+    local cacheKey = sessionOnly and ("SESSION:" .. activeSessionId) or "LIFETIME"
+    local characterCache = addon.summaryCache[characterKey] or {}
+    if characterCache[cacheKey] then return characterCache[cacheKey] end
+    local income, expenses, categories = 0, 0, {}
     for _, transaction in ipairs(characterData.transactions) do
         if not sessionOnly or transaction.sessionId == activeSessionId then
             local delta = transaction.deltaCopper
@@ -222,8 +226,11 @@ function addon.GetTotals(characterData, sessionOnly)
             if delta > 0 then income = income + delta else expenses = expenses - delta end
         end
     end
-    return {income = income, expenses = expenses, net = income - expenses,
-        categories = categories}
+    local totals = {income = income, expenses = expenses,
+        net = income - expenses, categories = categories}
+    characterCache[cacheKey] = totals
+    addon.summaryCache[characterKey] = characterCache
+    return totals
 end
 
 -- Cache a read-only month/day index. Indexes are never authoritative ledger data.
