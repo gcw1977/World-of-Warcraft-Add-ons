@@ -1,0 +1,10 @@
+## Interface: 16001
+## Title: Beestwood Industries - BI Core
+## Notes: Optional diagnostic dashboard for independent Forever addons
+## Author: Beestwood Industries
+## Version: 0.1.0-dev.1
+## SavedVariables: BICoreForeverDB
+Registry.lua
+Diagnostics.lua
+Dashboard.lua
+Main.lua
