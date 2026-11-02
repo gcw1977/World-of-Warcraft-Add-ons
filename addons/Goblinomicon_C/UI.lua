@@ -108,8 +108,11 @@ local function RefreshWallet(characterData)
     state.walletTitle:SetText(isCurrent and "CURRENT WALLET" or "LAST SEEN WALLET")
     state.walletValue:SetText(type(balance) == "number" and
         string.gsub(addon.FormatCopper(balance), "^%+", "") or "Waiting for wallet")
-    state.openingValue:SetText(firstEpoch and
-        string.gsub(addon.FormatCopper(firstEpoch.openingBalanceCopper), "^%+", "")
+    local corrected = characterData.accountingCorrection
+    local openingCopper = corrected and corrected.confirmedOpeningCopper or
+        (firstEpoch and firstEpoch.openingBalanceCopper)
+    state.openingValue:SetText(type(openingCopper) == "number" and
+        string.gsub(addon.FormatCopper(openingCopper), "^%+", "")
         or "Not established")
     local gaps = characterData.gapCount or 0
     state.coverage:SetText(gaps > 0 and ("Coverage gaps: " .. gaps) or "Journal active")
@@ -129,7 +132,9 @@ local function RefreshOverview(characterData)
     state.incomeValue:SetText(addon.FormatCopper(totals.income))
     state.expensesValue:SetText(addon.FormatCopper(-totals.expenses))
     state.netValue:SetText(addon.FormatCopper(totals.net))
-    state.subtitle:SetText("Recorded transactions by category")
+    state.subtitle:SetText(characterData.accountingCorrection and
+        "Owner-corrected opening; raw ledger retained" or
+        "Recorded transactions by category")
     local records = {}
     for category, copper in pairs(totals.incomeCategories) do
         records[#records + 1] = {
@@ -192,9 +197,10 @@ local function LedgerRows(characterData, index, firstOrdinal)
                             Include({
                                 description = "    #" .. tostring(transaction.sequence) ..
                                     "  " .. tostring(transaction.category or "Unclassified"),
-                                amount = addon.FormatCopper(transaction.deltaCopper),
+                                amount = addon.FormatCopper(
+                                    addon.EffectiveTransactionDelta(characterData, transaction)),
                                 balance = addon.FormatCopper(transaction.afterCopper),
-                                negative = transaction.deltaCopper < 0
+                                negative = addon.EffectiveTransactionDelta(characterData, transaction) < 0
                             }, "TRANSACTION", nil, nil, transactionIndex)
                         end
                     end
