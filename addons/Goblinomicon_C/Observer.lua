@@ -1,7 +1,8 @@
 -- Goblinomicon Classic - passive wallet observation and conservative attribution.
 local addonName, addon = ...
 addon.observer = {lastObservedCopper = nil, pending = {}, evidence = {},
-    nextEvidenceNumber = 1, flushScheduled = false, eventRegistered = false}
+    nextEvidenceNumber = 1, flushScheduled = false, eventRegistered = false,
+    startupReady = false, startupAttempt = 0}
 
 local function RuntimeSeconds()
     if type(GetTime) == "function" then
@@ -143,6 +144,7 @@ end
 -- Called synchronously by PLAYER_MONEY, not by a delayed UI update.
 function addon.ObserveMoneyEvent()
     if addon.safeMode or not addon.characterData then return end
+    if not addon.observer.startupReady then return end
     local currentCopper = addon.ReadWallet()
     if currentCopper == nil then return end
     local observer = addon.observer
@@ -180,6 +182,40 @@ function addon.BeginWalletObservation()
     local realmName = type(GetRealmName) == "function" and GetRealmName() or nil
     if addon.SelectCharacter(playerGuid, characterName, realmName, walletCopper) then
         addon.observer.lastObservedCopper = walletCopper
+    end
+end
+
+-- Wait for first-world money initialization, including an actual zero-wallet
+-- character. No initial money events are booked as earnings during this gate.
+function addon.ScheduleWorldWalletInitialization()
+    local observer = addon.observer
+    observer.startupReady = false
+    observer.startupAttempt = 0
+    local function Inspect()
+        observer.startupAttempt = observer.startupAttempt + 1
+        local wallet = addon.ReadWallet()
+        if wallet == nil or (wallet == 0 and observer.startupAttempt < 6) then
+            if type(C_Timer) == "table" and type(C_Timer.After) == "function" then
+                C_Timer.After(1, Inspect)
+            else
+                addon.NoteError("WORLD_WALLET_STABILIZATION_UNAVAILABLE")
+                observer.startupReady = true
+                addon.BeginWalletObservation()
+            end
+            return
+        end
+        if not addon.characterData then addon.BeginWalletObservation() end
+        if addon.characterData then
+            observer.lastObservedCopper = addon.ReadWallet()
+            observer.startupReady = true
+            if addon.RefreshVisibleUI then addon.RefreshVisibleUI() end
+        end
+    end
+    if type(C_Timer) == "table" and type(C_Timer.After) == "function" then
+        C_Timer.After(1.0, Inspect)
+    else
+        addon.NoteError("WORLD_WALLET_STABILIZATION_UNAVAILABLE")
+        Inspect()
     end
 end
 
