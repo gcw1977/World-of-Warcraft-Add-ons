@@ -1,7 +1,7 @@
 -- Goblinomicon Classic dev.7: event-backed financial provenance.
 -- No money changes or transaction rows are created from context alone.
 local addonName, addon = ...
-local ledgerContext = {evidence = {}, active = {}, capacity = 128}
+local ledgerContext = {evidence = {}, active = {}, capacity = 128, taxiSelections = {}}
 local function Clock()
     if type(GetTime) ~= "function" then return nil end
     local ok, value = pcall(GetTime)
@@ -57,6 +57,34 @@ local function CoinAmount(message)
     local amount = gold * 10000 + silver * 100 + copper
     return amount > 0 and addon.IsCopper(amount) and amount or nil
 end
+-- Remember a genuine taxi destination selection independently of taxi-frame visibility.
+-- TakeTaxiNode normally closes the map BEFORE PLAYER_MONEY is observed.
+local function RecordTaxiSelection(nodeIndex)
+    local now = Clock()
+    if not now then return end
+    -- The listed fare is advisory; discounts may change the actual charge.
+    local listedFare = ledgerContext.taxiCosts and ledgerContext.taxiCosts[nodeIndex]
+    local evidence = {category = "Flight Path", amount = nil,
+        listedFare = listedFare, confidence = "CORRELATED",
+        kind = "TAXI_SELECTION", at = now, consumed = false}
+    local queue = ledgerContext.evidence
+    queue[#queue + 1] = evidence
+    while #queue > ledgerContext.capacity do table.remove(queue, 1) end
+end
+local function SnapshotTaxiCosts()
+    ledgerContext.taxiCosts = {}
+    if type(NumTaxiNodes) ~= "function" or type(TaxiNodeCost) ~= "function" then
+        return
+    end
+    local ok, nodeCount = pcall(NumTaxiNodes)
+    if not ok or type(nodeCount) ~= "number" then return end
+    for nodeIndex = 1, math.min(100, math.max(0, nodeCount)) do
+        local valid, listedFare = pcall(TaxiNodeCost, nodeIndex)
+        if valid and type(listedFare) == "number" and listedFare >= 0 then
+            ledgerContext.taxiCosts[nodeIndex] = listedFare
+        end
+    end
+end
 local function SetWindow(key, opened)
     if opened then ledgerContext.active[key] = Clock()
     else ledgerContext.active[key] = nil end
@@ -87,6 +115,22 @@ local function Resolve(candidate)
         return matches[1].category, matches[1].confidence
     elseif #matches > 1 then
         return nil
+    end
+    -- One selected flight is stronger evidence than a closed taxi map.
+    -- Match by time and sign, not the listed fare (reputation reductions).
+    if change < 0 then
+        local selectedFlight
+        for _, evidence in ipairs(ledgerContext.evidence) do
+            if evidence.kind == "TAXI_SELECTION" and not evidence.consumed
+                and when >= evidence.at - 0.5 and when - evidence.at <= 15 then
+                if selectedFlight then selectedFlight = nil; break end
+                selectedFlight = evidence
+            end
+        end
+        if selectedFlight then
+            selectedFlight.consumed = true
+            return "Flight Path", "CORRELATED"
+        end
     end
     local options = {}
     local function Offer(key, positive, negative)
@@ -164,7 +208,24 @@ frame:SetScript("OnEvent", function(_, eventName, ...)
     elseif eventName == "AUCTION_HOUSE_CLOSED" then SetWindow("AUCTION", false)
     elseif eventName == "TRADE_SHOW" then SetWindow("TRADE", true)
     elseif eventName == "TRADE_CLOSED" then SetWindow("TRADE", false)
-    elseif eventName == "TAXIMAP_OPENED" then SetWindow("TAXI", true)
-    elseif eventName == "TAXIMAP_CLOSED" then SetWindow("TAXI", false)
+    elseif eventName == "TAXIMAP_OPENED" then
+        SetWindow("TAXI", true)
+        SnapshotTaxiCosts()
+    elseif eventName == "TAXIMAP_CLOSED" then
+        SetWindow("TAXI", false)
     end
 end)
+
+-- A secure post-hook observes the player's destination click without altering
+-- protected taxi functions. Both API shapes are guarded for Classic builds.
+if type(hooksecurefunc) == "function" then
+    if type(TakeTaxiNode) == "function" then
+        local ok = pcall(hooksecurefunc, "TakeTaxiNode", RecordTaxiSelection)
+        if not ok then addon.NoteError("TAXI_HOOK_UNAVAILABLE") end
+    elseif C_TaxiMap and type(C_TaxiMap.TakeTaxiNode) == "function" then
+        local ok = pcall(hooksecurefunc, C_TaxiMap, "TakeTaxiNode", RecordTaxiSelection)
+        if not ok then addon.NoteError("TAXI_HOOK_UNAVAILABLE") end
+    else
+        addon.NoteError("TAXI_HOOK_MISSING")
+    end
+end
