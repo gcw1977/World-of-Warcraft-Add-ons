@@ -39,10 +39,10 @@ local function ReadSlot(bagIndex, slotIndex)
     end
 end
 local function QuestInformation(bagIndex, slotIndex)
-    if not C_Container or not C_Container.GetContainerItemQuestInfo then
-        return nil
-    end
-    local ok, info = pcall(C_Container.GetContainerItemQuestInfo, bagIndex, slotIndex)
+    local questInfoFunction = C_Container and C_Container.GetContainerItemQuestInfo
+        or GetContainerItemQuestInfo
+    if type(questInfoFunction) ~= "function" then return nil end
+    local ok, info = pcall(questInfoFunction, bagIndex, slotIndex)
     if not ok or type(info) ~= "table" then return nil end
     if info.isQuestItem == true or (type(info.questID) == "number" and
         info.questID > 0) then return "PROTECTED" end
@@ -156,7 +156,7 @@ local function ReadOnlyRow(candidate, button)
         return
     end
     button:Show()
-    button.icon:SetTexture(candidate.icon or "Interface\Icons\INV_Misc_QuestionMark")
+    button.icon:SetTexture(candidate.icon or "Interface\\Icons\INV_Misc_QuestionMark")
     button.count:SetText(candidate.count > 1 and candidate.count or "")
     button.value:SetText(CopperText(candidate.value))
 end
@@ -198,7 +198,7 @@ local function CreateItemButton(parent, index)
     button:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -10 - (MAX_RESERVE-index)*60, -92)
     local background = button:CreateTexture(nil, "BACKGROUND")
     background:SetAllPoints(button)
-    background:SetTexture("Interface\Buttons\UI-Quickslot2")
+    background:SetTexture("Interface\\Buttons\UI-Quickslot2")
     button.icon = button:CreateTexture(nil, "ARTWORK")
     button.icon:SetPoint("TOPLEFT", 5, -5)
     button.icon:SetPoint("BOTTOMRIGHT", -5, 5)
@@ -267,13 +267,13 @@ local function Button(parent, text, x, y, width, callback)
 end
 local function CreateUI()
     local frame = CreateFrame("Frame", "LitterbugLiteHUD", UIParent, "BackdropTemplate")
-    frame:SetSize(350, 184)
+    frame:SetSize(350, 206)
     frame:SetClampedToScreen(true)
     frame:SetFrameStrata("MEDIUM")
     frame:SetMovable(true)
     frame:EnableMouse(true)
-    frame:SetBackdrop({bgFile = "Interface\Buttons\WHITE8X8",
-        edgeFile = "Interface\Tooltips\UI-Tooltip-Border", edgeSize = 12,
+    frame:SetBackdrop({bgFile = "Interface\\Buttons\WHITE8X8",
+        edgeFile = "Interface\\Tooltips\UI-Tooltip-Border", edgeSize = 12,
         insets = {left=3,right=3,top=3,bottom=3}})
     frame:SetBackdropColor(0.04,0.06,0.045,0.94)
     frame:SetBackdropBorderColor(0.58,0.54,0.37,1)
@@ -319,19 +319,19 @@ local function CreateUI()
     ui.statusLabel:SetPoint("TOPLEFT", frame, "TOPLEFT", 12, -62)
     ui.statusLabel:SetWidth(325)
     ui.statusLabel:SetJustifyH("LEFT")
-    Button(frame, "Sort Trash", 10, -154, 114, function()
+    Button(frame, "Sort Trash", 10, -179, 114, function()
         -- No stock Classic API promises safe trash-only physical sorting.
         -- Sort the virtual ranking and re-scan; never move or destroy items.
         ui.status = "Virtual trash order refreshed; bags not rearranged"
         Scan()
         Refresh()
     end)
-    Button(frame, "Refresh", 130, -154, 93, function()
+    Button(frame, "Refresh", 130, -179, 93, function()
         ui.status = ""
         Scan()
         Refresh()
     end)
-    Button(frame, "Hide", 229, -154, 106, function()
+    Button(frame, "Hide", 229, -179, 106, function()
         ui.forcedVisible = false
         frame:Hide()
     end)
