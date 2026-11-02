@@ -57,7 +57,7 @@ end
 -- This is an O(N) startup check; very large histories require owner performance testing.
 function addon.VerifyCharacter(characterData)
     if type(characterData) ~= "table" or type(characterData.transactions) ~= "table"
-        or type(characterData.epochs) ~= "table"
+        or type(characterData.epochs) ~= "table" or #characterData.epochs == 0
         or not IsCopper(characterData.lastCommittedBalanceCopper)
         or not IsCopper(characterData.nextSequenceNumber) then
         return false, "CHARACTER_SCHEMA_INVALID"
