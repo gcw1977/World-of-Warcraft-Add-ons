@@ -102,10 +102,11 @@ function addon.VerifyCharacter(characterData)
     return true
 end
 
-local function OpenEpoch(characterData, openingCopper, reason)
+local function OpenEpoch(characterData, openingCopper, reason, gapBeforeCopper)
     local timestamp = CurrentTimestamp()
     local epoch = {id = #characterData.epochs + 1, openingBalanceCopper = openingCopper,
-        lastBalanceCopper = openingCopper, openedAt = timestamp, reason = reason}
+        lastBalanceCopper = openingCopper, openedAt = timestamp, reason = reason,
+        gapBeforeCopper = gapBeforeCopper}
     table.insert(characterData.epochs, epoch)
     characterData.lastCommittedBalanceCopper = openingCopper
 end
@@ -134,7 +135,8 @@ function addon.SelectCharacter(playerGuid, characterName, realmName, openingCopp
         characterData.name = characterName or characterData.name
         characterData.realm = realmName or characterData.realm
         if characterData.lastCommittedBalanceCopper ~= openingCopper then
-            OpenEpoch(characterData, openingCopper, "STARTUP_GAP")
+            OpenEpoch(characterData, openingCopper, "STARTUP_GAP",
+                openingCopper - characterData.lastCommittedBalanceCopper)
             characterData.gapCount = (characterData.gapCount or 0) + 1
         end
     end
