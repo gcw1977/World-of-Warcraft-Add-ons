@@ -219,17 +219,25 @@ function addon.GetTotals(characterData, sessionOnly)
     local characterCache = addon.summaryCache[characterKey] or {}
     if characterCache[cacheKey] then return characterCache[cacheKey] end
     local income, expenses, categories = 0, 0, {}
+    local incomeCategories, expenseCategories = {}, {}
     for _, transaction in ipairs(characterData.transactions) do
         if not sessionOnly or transaction.sessionId == activeSessionId then
             local delta = transaction.deltaCopper
             local category = transaction.category or
                 (delta > 0 and "Unclassified Income" or "Unclassified Expense")
             categories[category] = (categories[category] or 0) + math.abs(delta)
-            if delta > 0 then income = income + delta else expenses = expenses - delta end
+            if delta > 0 then
+                income = income + delta
+                incomeCategories[category] = (incomeCategories[category] or 0) + delta
+            else
+                expenses = expenses - delta
+                expenseCategories[category] = (expenseCategories[category] or 0) - delta
+            end
         end
     end
     local totals = {income = income, expenses = expenses,
-        net = income - expenses, categories = categories}
+        net = income - expenses, categories = categories,
+        incomeCategories = incomeCategories, expenseCategories = expenseCategories}
     characterCache[cacheKey] = totals
     addon.summaryCache[characterKey] = characterCache
     return totals
