@@ -3,6 +3,7 @@ local addonName, addon = ...
 local lifecycleFrame = CreateFrame("Frame")
 local initialized = false
 local reloadRequested = false
+local pendingBaselineCopper = nil
 
 local function Chat(message)
     if DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then
@@ -56,9 +57,35 @@ local function HandleSlashCommand(arguments)
         local success = pcall(addon.OpenWindow, "OVERVIEW")
         if not success then addon.NoteError("UI_LAUNCH_FAILED"); Chat("UI unavailable; observer remains active") end
     elseif command == "baseline" then
-        Chat("Opening balance can only be confirmed in the Overview with an empty ledger")
+        Chat("Use /gob repair 1g7s50c to preview a historical baseline repair; then /gob repair confirm")
+    elseif command == "repair" then
+        local argument = type(arguments) == "string" and
+            string.match(arguments, "^%s*%S+%s+(.+)$") or ""
+        if argument == "confirm" then
+            if not pendingBaselineCopper then
+                Chat("No pending repair; preview with /gob repair 1g7s50c")
+            else
+                local success, message = addon.ApplyStartupCorrection(pendingBaselineCopper)
+                pendingBaselineCopper = nil
+                Chat(message)
+                if addon.RefreshVisibleUI then addon.RefreshVisibleUI() end
+            end
+        else
+            local amount = addon.ParseCopperAmount and addon.ParseCopperAmount(argument)
+            if not amount then
+                Chat("Use /gob repair 1g7s50c (example), then /gob repair confirm")
+            else
+                local valid, result = addon.PreviewStartupCorrection(amount)
+                pendingBaselineCopper = valid and amount or nil
+                if valid then
+                    Chat("Preview: opening " .. addon.FormatCopper(amount) ..
+                        "; post-opening unclassified change " .. result ..
+                        ". Raw ledger preserved. /gob repair confirm")
+                else Chat("Repair unavailable: " .. tostring(result)) end
+            end
+        end
     elseif command == "help" then
-        Chat("/gob [overview|ledger|diag|help] (also /goblinomicon)")
+        Chat("/gob [overview|ledger|diag|repair|help] (also /goblinomicon)")
     else
         Chat("Unknown command. /goblinomicon help")
     end
@@ -104,21 +131,13 @@ lifecycleFrame:SetScript("OnEvent", function(self, eventName, ...)
     elseif not initialized then
         return
     elseif eventName == "PLAYER_ENTERING_WORLD" then
-        addon.BeginWalletObservation()
-        -- Defer a second observation until world money has populated.
-        if type(C_Timer) == "table" and type(C_Timer.After) == "function" then
-            C_Timer.After(1.0, function()
-                if addon.characterData then addon.ReconcileWorldWallet() end
-                if addon.RefreshVisibleUI then addon.RefreshVisibleUI() end
-            end)
-        end
+        -- The initial world wallet can briefly report zero. Never establish a
+        -- baseline or record login money events until wallet stabilization.
+        addon.ScheduleWorldWalletInitialization()
     elseif eventName == "PLAYER_MONEY" then
-        if not addon.characterData then
-            -- Avoid creating an initial zero baseline before world entry.
-            if type(IsLoggedIn) == "function" and IsLoggedIn() then
-                addon.BeginWalletObservation()
-            end
-        else addon.ObserveMoneyEvent() end
+        if addon.observer.startupReady and addon.characterData then
+            addon.ObserveMoneyEvent()
+        end
     elseif eventName == "QUEST_TURNED_IN" then
         local questIdentifier, experienceReward, moneyReward = ...
         addon.RecordQuestEvidence(moneyReward)
