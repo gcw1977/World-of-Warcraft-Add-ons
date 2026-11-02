@@ -1,6 +1,6 @@
 # Goblinomicon — Classic Era
 
-Beestwood Industries independent Classic Era financial journal. **Development candidate 0.0.1-dev.1; not owner field-tested, not released.** No dependency on BI Core or any Forever addon.
+Beestwood Industries independent Classic Era financial journal. **Development candidate 0.0.1-dev.2; not owner field-tested, not released.** No dependency on BI Core or any Forever addon.
 
 ## Installation candidate layout
 
