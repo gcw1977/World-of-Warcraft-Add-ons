@@ -2,7 +2,7 @@
 -- SavedVariables are only serialized by the WoW client on reload/logout; they are
 -- not an independently durable database. Never invent transactions for downtime.
 local addonName, addon = ...
-addon.version = "0.0.1-dev.7"
+addon.version = "0.0.1-dev.8"
 addon.schemaVersion = 1
 addon.safeMode = false
 addon.lastErrorCode = nil
