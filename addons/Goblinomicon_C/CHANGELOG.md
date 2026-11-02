@@ -1,3 +1,8 @@
+## 2026-11-02 — 0.0.1-dev.8 — Flight attribution fix
+- Keep taxi destination selection evidence after taxi-map close (secure post-hook TakeTaxiNode).
+- Observed wallet deduction remains authoritative; listed taxi fares are advisory.
+- No retroactive change to existing SavedVariables. Client acceptance NOT_TESTED.
+
 # Goblinomicon Classic — continuous development changelog
 
 ## 2026-11-01 22:20–22:30 CST — 0.0.1-dev.1, MeeSeeks, DEV-03 construction
