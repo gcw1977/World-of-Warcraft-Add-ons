@@ -3,7 +3,7 @@
 local addonName, addon = ...
 local state = {
     page = "OVERVIEW", period = "LIFETIME", characterKey = nil,
-    rowCount = 13, pageNumber = 1, overviewPageNumber = 1,
+    rowCount = 7, pageNumber = 1, overviewPageNumber = 1,
     expandedMonths = {}, expandedDays = {}, selectedMonth = nil,
     selectedDay = nil, initialExpansionSet = false, expandAll = false,
     expandScope = "ALL"
@@ -106,15 +106,16 @@ local function RefreshWallet(characterData)
     end
     local firstEpoch = characterData.epochs and characterData.epochs[1]
     state.walletTitle:SetText(isCurrent and "CURRENT WALLET" or "LAST SEEN WALLET")
-    state.walletValue:SetText(type(balance) == "number" and addon.FormatCopper(balance)
-        or "Waiting for wallet")
+    state.walletValue:SetText(type(balance) == "number" and
+        string.gsub(addon.FormatCopper(balance), "^%+", "") or "Waiting for wallet")
     state.openingValue:SetText(firstEpoch and
-        addon.FormatCopper(firstEpoch.openingBalanceCopper) or "Not established")
+        string.gsub(addon.FormatCopper(firstEpoch.openingBalanceCopper), "^%+", "")
+        or "Not established")
     local gaps = characterData.gapCount or 0
     state.coverage:SetText(gaps > 0 and ("Coverage gaps: " .. gaps) or "Journal active")
     if isCurrent and type(balance) == "number" and
         balance ~= characterData.lastCommittedBalanceCopper then
-        state.coverage:SetText("Wallet update pending")
+        state.coverage:SetText("Wallet differs from checkpoint; review baseline")
     end
 end
 local function RefreshOverview(characterData)
@@ -271,6 +272,12 @@ function addon.RefreshVisibleUI()
     state.expandButton:SetShown(state.page == "LEDGER")
     state.collapseButton:SetShown(state.page == "LEDGER")
     state.pageTitle:SetText(state.page)
+    state.baselineButton:SetShown(state.page == "OVERVIEW" and
+        (state.characterKey or addon.characterKey) == addon.characterKey and
+        SelectedCharacter() ~= nil and
+        #SelectedCharacter().transactions == 0 and
+        #SelectedCharacter().epochs == 1 and
+        SelectedCharacter().epochs[1].reason == "INITIAL_BASELINE")
     if not characterData then
         state.subtitle:SetText("Waiting for valid character data")
         for _, row in ipairs(state.rows) do SetRow(row, nil) end
@@ -283,6 +290,10 @@ end
 local function ChangePage(page)
     state.page = page
     state.detail:SetText("")
+    state.baselineConfirmationArmed = false
+    if state.baselineButton then
+        state.baselineButton.caption:SetText("CONFIRM OPENING BALANCE")
+    end
     addon.RefreshVisibleUI()
 end
 local function ExpandSelection()
@@ -312,7 +323,7 @@ function addon.OpenWindow(requestedPage)
             return false
         end
         local frame = CreateFrame("Frame", "GoblinomiconClassicDashboard", UIParent)
-        frame:SetSize(700, 515)
+        frame:SetSize(700, 378)
         frame:SetFrameStrata("DIALOG")
         if frame.SetClampedToScreen then frame:SetClampedToScreen(true) end
         frame:SetMovable(true)
@@ -376,6 +387,19 @@ function addon.OpenWindow(requestedPage)
             state.pageNumber = 1
             addon.RefreshVisibleUI()
         end)
+        state.baselineButton = Button(frame, "CONFIRM OPENING BALANCE", 16, -308, 226,
+            function()
+                if not state.baselineConfirmationArmed then
+                    state.baselineConfirmationArmed = true
+                    state.baselineButton.caption:SetText("CONFIRM: USE CURRENT WALLET?")
+                    return
+                end
+                state.baselineConfirmationArmed = false
+                state.baselineButton.caption:SetText("CONFIRM OPENING BALANCE")
+                local success, message = addon.ConfirmOpeningBalance()
+                state.detail:SetText(message or (success and "Baseline updated" or "Unable to update"))
+                addon.RefreshVisibleUI()
+            end)
         state.walletTitle, state.walletValue = MoneyPanel(frame, "CURRENT WALLET", 14, 164)
         local openingTitle
         openingTitle, state.openingValue = MoneyPanel(frame, "OPENING BALANCE", 182, 164)
@@ -406,10 +430,10 @@ function addon.OpenWindow(requestedPage)
             row.balance:SetJustifyH("RIGHT")
             state.rows[#state.rows + 1] = row
         end
-        state.detail = Text(frame, "GameFontHighlightSmall", 662, 22, 17, -454)
-        state.coverage = Text(frame, "GameFontNormalSmall", 200, 20, 16, -479)
-        state.footer = Text(frame, "GameFontNormalSmall", 405, 20, 210, -479)
-        Button(frame, "<", 619, -475, 28, function()
+        state.detail = Text(frame, "GameFontHighlightSmall", 662, 22, 17, -338)
+        state.coverage = Text(frame, "GameFontNormalSmall", 355, 20, 16, -354)
+        state.footer = Text(frame, "GameFontNormalSmall", 230, 20, 382, -354)
+        Button(frame, "<", 619, -350, 28, function()
             if state.page == "LEDGER" then
                 state.pageNumber = math.max(1, state.pageNumber - 1)
             else
@@ -417,7 +441,7 @@ function addon.OpenWindow(requestedPage)
             end
             addon.RefreshVisibleUI()
         end)
-        Button(frame, ">", 653, -475, 28, function()
+        Button(frame, ">", 653, -350, 28, function()
             if state.page == "LEDGER" then
                 state.pageNumber = math.min(state.totalPages or 1, state.pageNumber + 1)
             else
