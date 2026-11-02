@@ -1,0 +1,15 @@
+## Interface: 16001
+## Title: Goblinomicon |cffc9a25cForever|r
+## Notes: Beestwood Industries - passive character wallet ledger (Forever development candidate)
+## Author: Beestwood Industries
+## Version: 0.1.0-dev.1
+## SavedVariables: GoblinomiconForeverDB
+## X-BI-Product: Goblinomicon_F
+## X-BI-Status: DEV-03 / FOREVER FIELD NOT TESTED
+Core.lua
+Persistence.lua
+Attribution.lua
+Ledger.lua
+Wallet.lua
+UI.lua
+Main.lua
