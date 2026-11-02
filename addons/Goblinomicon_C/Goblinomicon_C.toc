@@ -1,0 +1,11 @@
+## Interface: 11509
+## Title: Goblinomicon |cffffd100Classic|r
+## Notes: Beestwood Industries - passive character copper journal (development candidate)
+## Author: Beestwood Industries
+## Version: 0.0.1-dev.1
+## SavedVariables: GoblinomiconClassicAccountData
+
+Data.lua
+Observer.lua
+UI.lua
+Main.lua
