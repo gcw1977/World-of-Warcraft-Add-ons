@@ -118,6 +118,28 @@ local function ScheduleFlush()
     addon.FlushObservedMoney()
 end
 
+-- The game may emit the opening world money state after ADDON_LOADED.
+-- If a wallet change is seen without PLAYER_MONEY, reconcile as a coverage gap
+-- rather than making up income. Existing pending observations are preserved.
+function addon.ReconcileWorldWallet()
+    if not addon.characterData or addon.safeMode then return end
+    if #addon.observer.pending > 0 then
+        addon.FlushObservedMoney()
+        if #addon.observer.pending > 0 then return end
+    end
+    local currentCopper = addon.ReadWallet()
+    if currentCopper == nil then return end
+    local previousCopper = addon.characterData.lastCommittedBalanceCopper
+    if currentCopper == previousCopper then
+        addon.observer.lastObservedCopper = currentCopper
+        return
+    end
+    -- Do not silently fix an unverified pre-world zero baseline or classify
+    -- an uncertain gap as earnings. UI offers explicit empty-journal correction.
+    addon.observer.lastObservedCopper = currentCopper
+    addon.walletNeedsReconciliation = true
+end
+
 -- Called synchronously by PLAYER_MONEY, not by a delayed UI update.
 function addon.ObserveMoneyEvent()
     if addon.safeMode or not addon.characterData then return end
@@ -142,6 +164,7 @@ end
 -- not income. Existing checkpoint differences become a coverage gap epoch.
 function addon.BeginWalletObservation()
     if addon.safeMode or addon.characterData then return end
+    if type(IsLoggedIn) == "function" and not IsLoggedIn() then return end
     local walletCopper = addon.ReadWallet()
     if walletCopper == nil then return end
     if type(UnitGUID) ~= "function" then
