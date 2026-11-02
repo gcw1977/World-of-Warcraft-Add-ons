@@ -56,7 +56,7 @@ local function HandleSlashCommand(arguments)
         local success = pcall(addon.OpenWindow, "OVERVIEW")
         if not success then addon.NoteError("UI_LAUNCH_FAILED"); Chat("UI unavailable; observer remains active") end
     elseif command == "help" then
-        Chat("/goblinomicon [overview|ledger|diag|help]")
+        Chat("/gob [overview|ledger|diag|help] (also /goblinomicon)")
     else
         Chat("Unknown command. /goblinomicon help")
     end
@@ -116,4 +116,5 @@ end)
 RegisterEventSafely("ADDON_LOADED", true)
 
 SLASH_GOBLINOMICONCLASSIC1 = "/goblinomicon"
+SLASH_GOBLINOMICONCLASSIC2 = "/gob"
 SlashCmdList["GOBLINOMICONCLASSIC"] = HandleSlashCommand
