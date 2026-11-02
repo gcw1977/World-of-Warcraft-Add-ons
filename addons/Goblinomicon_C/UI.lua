@@ -6,7 +6,7 @@ local state = {
     rowCount = 5, pageNumber = 1, overviewPageNumber = 1,
     expandedMonths = {}, expandedDays = {}, selectedMonth = nil,
     selectedDay = nil, initialExpansionSet = false, expandAll = false,
-    expandScope = "ALL"
+    expandScope = "ALL", categoryFilter = nil
 }
 local function Paint(texture, red, green, blue, alpha)
     if texture.SetColorTexture then
@@ -24,19 +24,10 @@ local function Text(parent, font, width, height, x, y)
     return label
 end
 local function Button(parent, caption, x, y, width, callback)
-    local button = CreateFrame("Button", nil, parent)
+    local button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
     button:SetSize(width, 27)
     button:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
-    local fill = button:CreateTexture(nil, "BACKGROUND")
-    fill:SetAllPoints(button)
-    Paint(fill, 0.29, 0.21, 0.115, 0.98)
-    local edge = button:CreateTexture(nil, "BORDER")
-    edge:SetPoint("BOTTOMLEFT", button, "BOTTOMLEFT", 0, 0)
-    edge:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 0, 0)
-    edge:SetHeight(2)
-    Paint(edge, 0.66, 0.48, 0.22, 0.95)
-    button.caption = Text(button, "GameFontNormalSmall", width - 8, 22, 4, -2)
-    button.caption:SetJustifyH("CENTER")
+    button.caption = button:GetFontString()
     button.caption:SetText(caption)
     button:SetScript("OnClick", callback)
     return button
@@ -69,6 +60,7 @@ local function ChangeCharacter(direction)
     state.initialExpansionSet = false
     state.selectedMonth = nil
     state.selectedDay = nil
+    state.categoryFilter = nil
     addon.RefreshVisibleUI()
 end
 local function SetRow(row, record, clickHandler)
@@ -84,6 +76,9 @@ local function SetRow(row, record, clickHandler)
     row.amount:SetTextColor(record.negative and 0.95 or 0.58,
         record.negative and 0.44 or 0.88, record.negative and 0.42 or 0.54)
     row:SetScript("OnClick", clickHandler)
+    if row.hoverTexture then
+        row.hoverTexture:SetShown(type(clickHandler) == "function")
+    end
 end
 local function MoneyPanel(frame, title, x, width)
     local panel = CreateFrame("Frame", nil, frame)
@@ -138,12 +133,12 @@ local function RefreshOverview(characterData)
     local records = {}
     for category, copper in pairs(totals.incomeCategories) do
         records[#records + 1] = {
-            description = category, amount = addon.FormatCopper(copper)
+            description = category, category = category, amount = addon.FormatCopper(copper)
         }
     end
     for category, copper in pairs(totals.expenseCategories) do
         records[#records + 1] = {
-            description = category, amount = addon.FormatCopper(-copper), negative = true
+            description = category, category = category, amount = addon.FormatCopper(-copper), negative = true
         }
     end
     table.sort(records, function(left, right) return left.description < right.description end)
@@ -152,7 +147,15 @@ local function RefreshOverview(characterData)
     end
     local first = (state.overviewPageNumber - 1) * state.rowCount + 1
     for index, row in ipairs(state.rows) do
-        SetRow(row, records[first + index - 1])
+        local overviewRecord = records[first + index - 1]
+        SetRow(row, overviewRecord, overviewRecord and overviewRecord.category
+            and function()
+                state.categoryFilter = overviewRecord.category
+                state.page = "LEDGER"
+                state.pageNumber = 1
+                state.detail:SetText("")
+                addon.RefreshVisibleUI()
+            end or nil)
     end
     state.totalPages = math.max(1, math.ceil(#records / state.rowCount))
     state.footer:SetText("Overview " .. state.overviewPageNumber .. "/" ..
@@ -210,6 +213,38 @@ local function LedgerRows(characterData, index, firstOrdinal)
     end
     return result, ordinal
 end
+-- A category drill-down is a read-only view over the existing journal.
+-- No schema changes, accounting changes, or transaction rewriting.
+local function CategoryLedgerRows(characterData, firstOrdinal)
+    local matches, visible = {}, {}
+    local sessionId = characterData.activeSession and characterData.activeSession.id
+    for transactionIndex = #characterData.transactions, 1, -1 do
+        local transaction = characterData.transactions[transactionIndex]
+        if transaction.category == state.categoryFilter and
+            (state.period ~= "SESSION" or
+                (sessionId and transaction.sessionId == sessionId)) then
+            matches[#matches + 1] = transactionIndex
+        end
+    end
+    for ordinal = firstOrdinal, math.min(#matches, firstOrdinal + state.rowCount - 1) do
+        local transactionIndex = matches[ordinal]
+        local transaction = characterData.transactions[transactionIndex]
+        local effectiveChange = addon.EffectiveTransactionDelta(characterData, transaction)
+        local dateLabel = type(transaction.timestamp) == "number"
+            and date("%m/%d", transaction.timestamp) or "--/--"
+        visible[#visible + 1] = {
+            record = {
+                description = "#" .. tostring(transaction.sequence) .. "  " .. dateLabel ..
+                    "   " .. tostring(transaction.category),
+                amount = addon.FormatCopper(effectiveChange),
+                balance = addon.FormatCopper(transaction.afterCopper),
+                negative = effectiveChange < 0
+            },
+            kind = "TRANSACTION", transactionIndex = transactionIndex
+        }
+    end
+    return visible, #matches
+end
 local function RefreshLedger(characterData)
     local selectedKey = state.characterKey or addon.characterKey
     local index = addon.GetLedgerIndex(selectedKey)
@@ -224,12 +259,19 @@ local function RefreshLedger(characterData)
         if dayKey then state.expandedDays[dayKey] = true end
         state.initialExpansionSet = true
     end
-    state.subtitle:SetText(tostring(#characterData.transactions) .. " recorded transactions")
+    state.subtitle:SetText(state.categoryFilter and
+        ("Category: " .. state.categoryFilter) or
+        (tostring(#characterData.transactions) .. " recorded transactions"))
     state.incomeValue:SetText("—")
     state.expensesValue:SetText("—")
     state.netValue:SetText("—")
     local first = (state.pageNumber - 1) * state.rowCount + 1
-    local records, total = LedgerRows(characterData, index, first)
+    local records, total
+    if state.categoryFilter then
+        records, total = CategoryLedgerRows(characterData, first)
+    else
+        records, total = LedgerRows(characterData, index, first)
+    end
     state.totalPages = math.max(1, math.ceil(total / state.rowCount))
     if state.pageNumber > state.totalPages then
         state.pageNumber = state.totalPages
@@ -263,7 +305,8 @@ local function RefreshLedger(characterData)
         end
     end
     state.footer:SetText("Ledger " .. state.pageNumber .. "/" .. state.totalPages ..
-        "    " .. total .. " logical rows    Read-only")
+        "    " .. total .. (state.categoryFilter and " matching entries" or " logical rows") ..
+        "    Read-only")
 end
 function addon.RefreshVisibleUI()
     if not state.frame or not state.frame:IsShown() then return end
@@ -273,10 +316,12 @@ function addon.RefreshVisibleUI()
         or "Character unavailable")
     state.periodButton.caption:SetText("Period: " .. state.period)
     state.scopeButton.caption:SetText("Expand: " .. state.expandScope)
-    state.periodButton:SetShown(state.page == "OVERVIEW")
-    state.scopeButton:SetShown(state.page == "LEDGER")
-    state.expandButton:SetShown(state.page == "LEDGER")
-    state.collapseButton:SetShown(state.page == "LEDGER")
+    state.periodButton:SetShown(state.page == "OVERVIEW" or (state.page == "LEDGER" and state.categoryFilter ~= nil))
+    state.scopeButton:SetShown(state.page == "LEDGER" and not state.categoryFilter)
+    state.clearFilterButton:SetShown(state.page == "LEDGER" and
+        state.categoryFilter ~= nil)
+    state.expandButton:SetShown(state.page == "LEDGER" and not state.categoryFilter)
+    state.collapseButton:SetShown(state.page == "LEDGER" and not state.categoryFilter)
     state.pageTitle:SetText(state.page)
     state.baselineButton:SetShown(state.page == "OVERVIEW" and
         (state.characterKey or addon.characterKey) == addon.characterKey and
@@ -295,6 +340,9 @@ function addon.RefreshVisibleUI()
 end
 local function ChangePage(page)
     state.page = page
+    -- The Ledger tab returns to the unfiltered journal; category clicks set a filter.
+    if page == "LEDGER" then state.categoryFilter = nil end
+    state.pageNumber = 1
     state.detail:SetText("")
     state.baselineConfirmationArmed = false
     if state.baselineButton then
@@ -328,7 +376,7 @@ function addon.OpenWindow(requestedPage)
             addon.NoteError("UI_API_UNAVAILABLE")
             return false
         end
-        local frame = CreateFrame("Frame", "GoblinomiconClassicDashboard", UIParent)
+        local frame = CreateFrame("Frame", "GoblinomiconClassicDashboard", UIParent, "BackdropTemplate")
         frame:SetSize(700, 378)
         frame:SetFrameStrata("DIALOG")
         if frame.SetClampedToScreen then frame:SetClampedToScreen(true) end
@@ -346,14 +394,14 @@ function addon.OpenWindow(requestedPage)
                     {x = centerX - parentX, y = centerY - parentY}
             end
         end)
-        local background = frame:CreateTexture(nil, "BACKGROUND")
-        background:SetAllPoints(frame)
-        Paint(background, 0.15, 0.115, 0.075, 0.985)
-        local topTrim = frame:CreateTexture(nil, "BORDER")
-        topTrim:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
-        topTrim:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, 0)
-        topTrim:SetHeight(5)
-        Paint(topTrim, 0.76, 0.54, 0.24, 1)
+        -- Classic dialog textures and frame border instead of solid brown panels.
+        frame:SetBackdrop({
+            bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+            tile = true, tileSize = 32, edgeSize = 32,
+            insets = {left = 11, right = 12, top = 11, bottom = 11}
+        })
+        frame:SetBackdropColor(1, 1, 1, 1)
         local storedGeometry = addon.accountData and addon.accountData.displaySettings
             and addon.accountData.displaySettings.windowGeometry
         if type(storedGeometry) == "table" and type(storedGeometry.x) == "number"
@@ -365,7 +413,7 @@ function addon.OpenWindow(requestedPage)
             frame:SetPoint("CENTER", UIParent, "CENTER")
         end
         state.frame = frame
-        Text(frame, "GameFontNormalLarge", 270, 29, 16, -12):SetText("GOBLINOMICON")
+        Text(frame, "GameFontNormalLarge", 270, 29, 24, -12):SetText("Goblinomicon")
         Button(frame, "X", 661, -14, 26, function() frame:Hide() end)
         Button(frame, "<", 300, -15, 27, function() ChangeCharacter(-1) end)
         state.characterLabel = Text(frame, "GameFontNormalSmall", 250, 26, 333, -14)
@@ -376,6 +424,7 @@ function addon.OpenWindow(requestedPage)
             function()
                 state.period = state.period == "LIFETIME" and "SESSION" or "LIFETIME"
                 state.overviewPageNumber = 1
+                state.pageNumber = 1
                 addon.RefreshVisibleUI()
             end)
         state.scopeButton = Button(frame, "Expand: ALL", 270, -54, 114, function()
@@ -384,6 +433,13 @@ function addon.OpenWindow(requestedPage)
             else state.expandScope = "ALL" end
             addon.RefreshVisibleUI()
         end)
+        state.clearFilterButton = Button(frame, "CLEAR FILTER", 270, -54, 139,
+            function()
+                state.categoryFilter = nil
+                state.pageNumber = 1
+                state.detail:SetText("")
+                addon.RefreshVisibleUI()
+            end)
         state.expandButton = Button(frame, "Expand", 391, -54, 93, ExpandSelection)
         state.collapseButton = Button(frame, "Collapse All", 491, -54, 126, function()
             state.expandAll = false
@@ -429,6 +485,9 @@ function addon.OpenWindow(requestedPage)
             tint:SetAllPoints(row)
             if rowNumber % 2 == 0 then Paint(tint, 0.24, 0.18, 0.11, 0.92)
             else Paint(tint, 0.20, 0.15, 0.095, 0.82) end
+            row.hoverTexture = row:CreateTexture(nil, "HIGHLIGHT")
+            row.hoverTexture:SetAllPoints(row)
+            row.hoverTexture:SetColorTexture(0.9, 0.72, 0.3, 0.18)
             row.description = Text(row, "GameFontHighlightSmall", 401, 18, 6, 0)
             row.amount = Text(row, "GameFontHighlightSmall", 132, 18, 412, 0)
             row.amount:SetJustifyH("RIGHT")
