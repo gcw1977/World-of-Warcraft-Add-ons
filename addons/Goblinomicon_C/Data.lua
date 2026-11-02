@@ -1,4 +1,4 @@
--- Goblinomicon Classic 0.0.1-dev.3 - account schema and append-only ledger.
+-- Goblinomicon Classic 0.0.1-dev.5 - account schema and append-only ledger.
 -- SavedVariables are only serialized by the WoW client on reload/logout; they are
 -- not an independently durable database. Never invent transactions for downtime.
 local addonName, addon = ...
