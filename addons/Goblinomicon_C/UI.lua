@@ -433,7 +433,7 @@ function addon.OpenWindow(requestedPage)
             else state.expandScope = "ALL" end
             addon.RefreshVisibleUI()
         end)
-        state.clearFilterButton = Button(frame, "CLEAR FILTER", 270, -54, 139,
+        state.clearFilterButton = Button(frame, "CLEAR FILTER", 414, -54, 139,
             function()
                 state.categoryFilter = nil
                 state.pageNumber = 1
