@@ -6,6 +6,15 @@ local inventory = {candidates = {}, free = 0, total = 0, unknownBags = 0,
     protected = 0, pending = 0, scanned = false, revision = 0}
 local ui = {buttons = {}, forcedVisible = false, status = ""}
 local MIN_RESERVE, MAX_RESERVE, DEFAULT_RESERVE = 3, 5, 3
+local HEARTHSTONE_ITEM_ID = 6948
+local function IgnoredItems()
+    LitterbugLiteDB = LitterbugLiteDB or {}
+    LitterbugLiteDB.ignoredItems = LitterbugLiteDB.ignoredItems or {}
+    return LitterbugLiteDB.ignoredItems
+end
+local function Chat(message)
+    if DEFAULT_CHAT_FRAME then DEFAULT_CHAT_FRAME:AddMessage("|cffb5d58e[Litterbug]|r " .. message) end
+end
 local function IsInteger(number)
     return type(number) == "number" and number == math.floor(number) and number >= 0
 end
@@ -66,14 +75,14 @@ local function CachedValue(itemIdentifier)
     if type(GetItemInfo) ~= "function" then return nil end
     local name, _, quality, _, _, _, _, _, _, _, price, classID =
         GetItemInfo(itemIdentifier)
-    if type(name) ~= "string" or quality ~= 0 or not IsInteger(price) then
+    if type(name) ~= "string" or quality == nil or not IsInteger(price) then
         return nil
     end
     if classID == nil and type(GetItemInfoInstant) == "function" then
         local _, _, _, _, _, instantClass = GetItemInfoInstant(itemIdentifier)
         classID = instantClass
     end
-    if type(classID) ~= "number" or classID == 12 then return nil end
+    if type(classID) ~= "number" then return nil end
     return name, price
 end
 local function Candidate(bagIndex, slotIndex)
@@ -81,8 +90,11 @@ local function Candidate(bagIndex, slotIndex)
     if not item then return nil end
     if not IsInteger(item.id) or item.id == 0 or type(item.link) ~= "string"
         or not IsInteger(item.count) or item.count == 0 or
-        item.quality ~= 0 or item.locked ~= false then
+        item.quality == nil or item.locked ~= false then
         return nil, "UNSAFE"
+    end
+    if item.id == HEARTHSTONE_ITEM_ID or IgnoredItems()[item.id] then
+        return nil, "PROTECTED"
     end
     if QuestInformation(bagIndex, slotIndex) ~= "CLEAR" then
         return nil, "QUEST_UNKNOWN"
@@ -118,7 +130,7 @@ local function Scan()
                 local candidate, reason = Candidate(bagIndex, slotIndex)
                 if candidate then
                     snapshot.candidates[#snapshot.candidates + 1] = candidate
-                elseif reason == "QUEST_UNKNOWN" then
+                elseif reason == "QUEST_UNKNOWN" or reason == "PROTECTED" then
                     snapshot.protected = snapshot.protected + 1
                 elseif reason then
                     snapshot.pending = snapshot.pending + 1
@@ -244,14 +256,14 @@ local function Refresh()
         #inventory.candidates == 0 and inventory.unknownBags == 0
     if fullAndNoTrash then
         ui.statusLabel:SetTextColor(1, 0.22, 0.22)
-        UpdateStatus("BAGS FULL. NO VERIFIED SAFE GRAY ITEMS.")
+        UpdateStatus("BAGS FULL. NO VERIFIED DISCARD CANDIDATES.")
     elseif inventory.unknownBags > 0 then
         ui.statusLabel:SetTextColor(1, 0.55, 0.25)
         UpdateStatus("Bag capacity unavailable; check inventory")
     else
         ui.statusLabel:SetTextColor(1, 0.82, 0.35)
         UpdateStatus(ui.status ~= "" and ui.status or
-            (#inventory.candidates .. " safely eligible gray stacks"))
+            (#inventory.candidates .. " eligible stacks ranked by total vendor value"))
     end
     local show = ui.forcedVisible or fullAndNoTrash or
         (needed > 0 and displayCount > 0)
@@ -337,10 +349,70 @@ local function CreateUI()
     end)
     ui.refresh = Refresh
 end
+local function ParseItemIDs(text)
+    local ids, seen = {}, {}
+    for rawID in text:gmatch("|Hitem:(%d+)") do
+        local id = tonumber(rawID)
+        if id and not seen[id] then ids[#ids+1] = id; seen[id] = true end
+    end
+    if #ids == 0 then
+        local rawID = text:match("^%s*(%d+)%s*$")
+        if rawID then ids[1] = tonumber(rawID) end
+    end
+    return ids
+end
+
+local function HandleIgnore(operation, arguments)
+    local ignored = IgnoredItems()
+    if operation == "list" then
+        local ids = {}
+        for id, enabled in pairs(ignored) do
+            if enabled then ids[#ids+1] = tonumber(id) end
+        end
+        table.sort(ids)
+        if #ids == 0 then Chat("Ignore list is empty.") end
+        for _, id in ipairs(ids) do
+            local link = type(GetItemInfo) == "function" and select(2, GetItemInfo(id))
+            Chat((link or ("Item ID " .. id)) .. " (" .. id .. ")")
+        end
+        return
+    elseif operation == "clear" then
+        LitterbugLiteDB.ignoredItems = {}
+        Chat("Ignore list cleared. Permanent exclusions remain active.")
+    elseif operation == "add" or operation == "remove" then
+        local ids = ParseItemIDs(arguments or "")
+        if #ids == 0 then
+            Chat("Use Shift-clicked item links or a numeric item ID.")
+            return
+        end
+        for _, id in ipairs(ids) do
+            if operation == "add" then ignored[id] = true else ignored[id] = nil end
+        end
+        Chat((operation == "add" and "Ignored " or "Unignored ") .. #ids .. " item(s).")
+    else
+        Chat("Commands: /lbl ignore [items] | /lbl ignore list | /lbl unignore [items] | /lbl ignore clear")
+        return
+    end
+    ui.status = ""
+    Scan()
+    Refresh()
+end
+
 SLASH_LITTERBUGLITE1 = "/lbl"
 SLASH_LITTERBUGLITE2 = "/litterbug"
 SlashCmdList.LITTERBUGLITE = function(argument)
-    argument = string.lower(string.match(argument or "", "^%s*(.-)%s*$"))
+    argument = string.match(argument or "", "^%s*(.-)%s*$")
+    local command, remainder = argument:match("^(%S+)%s*(.-)$")
+    local lowercaseCommand = command and command:lower() or ""
+    if lowercaseCommand == "ignore" then
+        if remainder:lower() == "list" then return HandleIgnore("list") end
+        if remainder:lower() == "clear" then return HandleIgnore("clear") end
+        if remainder == "" then return HandleIgnore("help") end
+        return HandleIgnore("add", remainder)
+    elseif lowercaseCommand == "unignore" then
+        return HandleIgnore("remove", remainder)
+    end
+    argument = argument:lower()
     if argument == "diag" then
         if DEFAULT_CHAT_FRAME then
             DEFAULT_CHAT_FRAME:AddMessage("Litterbug Lite v0.2.0-dev.1: normal " ..
