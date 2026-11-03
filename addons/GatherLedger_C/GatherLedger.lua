@@ -50,14 +50,20 @@ local function snapshotTarget()
     return {guid = guid, name = UnitName("target") or "Unknown Creature",
        level = UnitLevel("target"), creatureID = extractCreatureIDFromGUID(guid)}
 end
-local function beginAttempt()
+local function beginAttempt(castGUID)
     local target = snapshotTarget()
-    pending = { target = target, started = now(), succeeded = false }
+    pending = { target = target, castGUID = castGUID, started = now(), succeeded = false }
     captured = false
 end
-local function markSuccess()
-    if not pending or now() - pending.started > 15 then beginAttempt() end
+local function markSuccess(castGUID)
+    -- A successful skin is authoritative even when SENT was not observed.
+    -- Never associate a new cast with the previous skin's target.
+    if not pending or now() - pending.started > 15
+       or (castGUID and pending.castGUID and castGUID ~= pending.castGUID) then
+        beginAttempt(castGUID)
+    end
     if not pending then return end
+    if castGUID then pending.castGUID = castGUID end
     if not pending.target then pending.target = snapshotTarget() end
     pending.succeeded = true
     pending.finished = now()
@@ -251,6 +257,7 @@ addon:RegisterEvent("ADDON_LOADED")
 addon:RegisterEvent("UNIT_SPELLCAST_SENT")
 addon:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
 addon:RegisterEvent("LOOT_READY")
+addon:RegisterEvent("LOOT_OPENED")
 addon:SetScript("OnEvent", function(self, event, ...)
     if event == "ADDON_LOADED" then
         local name = ...
@@ -262,11 +269,12 @@ addon:SetScript("OnEvent", function(self, event, ...)
         end
     elseif event == "UNIT_SPELLCAST_SENT" then
         local unit, targetName, castGUID, spellID = ...
-        if unit == "player" and isSkinningSpell(spellID) then beginAttempt() end
+        if unit == "player" and isSkinningSpell(spellID) then beginAttempt(castGUID) end
     elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
         local unit = ...
-        if unit == "player" and isSkinningSpell(spellIDFromEvent(...)) then markSuccess() end
-    elseif event == "LOOT_READY" then
+        local _, castGUID = ...
+        if unit == "player" and isSkinningSpell(spellIDFromEvent(...)) then markSuccess(castGUID) end
+    elseif event == "LOOT_READY" or event == "LOOT_OPENED" then
         collectLoot()
     end
 end)
