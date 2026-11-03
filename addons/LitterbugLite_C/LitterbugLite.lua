@@ -242,7 +242,9 @@ local function Refresh()
     ui.bagLabel:SetText("Ordinary bag slots: " .. inventory.free .. "/" ..
         inventory.total)
     local needed = math.max(0, reserve - inventory.free)
-    local displayCount = math.min(needed, #inventory.candidates, MAX_RESERVE)
+    -- Always present the five lowest-value eligible occupied stacks.
+    -- Reserve controls when the HUD appears automatically, not queue size.
+    local displayCount = math.min(#inventory.candidates, MAX_RESERVE)
     -- All virtual cells retain their physical x positions: cheapest on left
     -- among the displayed entries, with empty slots remaining to the left.
     for index, button in ipairs(ui.buttons) do
@@ -331,19 +333,12 @@ local function CreateUI()
     ui.statusLabel:SetPoint("TOPLEFT", frame, "TOPLEFT", 12, -62)
     ui.statusLabel:SetWidth(325)
     ui.statusLabel:SetJustifyH("LEFT")
-    Button(frame, "Sort Trash", 10, -179, 114, function()
-        -- No stock Classic API promises safe trash-only physical sorting.
-        -- Sort the virtual ranking and re-scan; never move or destroy items.
-        ui.status = "Virtual trash order refreshed; bags not rearranged"
-        Scan()
-        Refresh()
-    end)
-    Button(frame, "Refresh", 130, -179, 93, function()
+    Button(frame, "Refresh", 66, -179, 93, function()
         ui.status = ""
         Scan()
         Refresh()
     end)
-    Button(frame, "Hide", 229, -179, 106, function()
+    Button(frame, "Hide", 190, -179, 106, function()
         ui.forcedVisible = false
         frame:Hide()
     end)
