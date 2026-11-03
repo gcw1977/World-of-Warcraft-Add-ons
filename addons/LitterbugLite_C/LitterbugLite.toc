@@ -1,8 +1,8 @@
 ## Interface: 11509
 ## Title: Litterbug Lite
-## Notes: Classic bag-space reserve HUD: gray-item virtual slots, no automatic deletion.
+## Notes: Classic bag-space reserve HUD: lowest-value eligible stack queue, no automatic deletion.
 ## Author: Beestwood Industries
-## Version: 0.2.0-dev.1
+## Version: 0.2.0-rc.1
 ## SavedVariables: LitterbugLiteDB
 
 LitterbugLite.lua
